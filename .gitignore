@@ -1,3 +1,7 @@
+dist-cjs
+dist-esm
+.work
+
 # Logs
 logs
 *.log

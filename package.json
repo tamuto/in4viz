@@ -1,0 +1,26 @@
+{
+  "name": "@infodb/in4viz",
+  "version": "0.0.1",
+  "description": "In4viz is a visualization library for Infrastructure",
+  "author": "tamuto <tamuto@infodb.jp>",
+  "license": "MIT",
+  "main": "dist-cjs/index.js",
+  "module": "dist-esm/index.js",
+  "types": "dist-cjs/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamuto/in4viz.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@svgdotjs/svg.js": "^3.2.4"
+  }
+}
