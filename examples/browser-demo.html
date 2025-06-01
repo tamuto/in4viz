@@ -217,10 +217,10 @@
                 </div>
 
                 <div class="controls">
-                    <button class="btn" onclick="renderBasicDemo()">🚀 Render Basic Demo</button>
-                    <button class="btn" onclick="renderComplexDemo()">🔧 Render Complex Demo</button>
-                    <button class="btn" onclick="clearDiagram()">🗑️ Clear Diagram</button>
-                    <button class="btn" onclick="downloadSVG()">💾 Download SVG</button>
+                    <button class="btn" id="basic-demo-btn">🚀 Render Basic Demo</button>
+                    <button class="btn" id="complex-demo-btn">🔧 Render Complex Demo</button>
+                    <button class="btn" id="clear-btn">🗑️ Clear Diagram</button>
+                    <button class="btn" id="download-btn">💾 Download SVG</button>
                 </div>
 
                 <div class="diagram-container" id="diagram-container">
@@ -261,38 +261,80 @@ in4viz.render(infrastructure);
     <script type="module">
         // Import In4viz library
         let In4viz, AWSProvider;
-
-        try {
-            const module = await import('../packages/core/dist/index.mjs');
-            In4viz = module.In4viz;
-            AWSProvider = module.AWSProvider;
-            console.log('✅ In4viz library loaded successfully');
-        } catch (error) {
-            console.error('❌ Failed to load In4viz library:', error);
-            showError('Failed to load In4viz library: ' + error.message);
-        }
-
         let currentInfrastructure = null;
         let in4vizInstance = null;
 
-        // Initialize In4viz when page loads
-        window.addEventListener('DOMContentLoaded', async function() {
-            // Wait for module loading if it's still in progress
-            while (!In4viz) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
+        // Function declarations need to be accessible
+        function showError(message) {
+            console.error('🚨 Error:', message);
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        // Make showError globally accessible for error handling
+        window.showError = showError;
+
+        // Function to initialize the application
+        async function initializeApp() {
+            console.log('🚀 Initializing In4viz application...');
+            console.log('📋 Document ready state:', document.readyState);
 
             try {
-                // Create In4viz instance targeting our diagram container
+                // Check if required elements exist
                 const container = document.getElementById('diagram-container');
+                const basicBtn = document.getElementById('basic-demo-btn');
+                const complexBtn = document.getElementById('complex-demo-btn');
+                const clearBtn = document.getElementById('clear-btn');
+                const downloadBtn = document.getElementById('download-btn');
+
+                console.log('🔍 Element check:', {
+                    container: !!container,
+                    basicBtn: !!basicBtn,
+                    complexBtn: !!complexBtn,
+                    clearBtn: !!clearBtn,
+                    downloadBtn: !!downloadBtn
+                });
+
+                if (!container || !basicBtn || !complexBtn || !clearBtn || !downloadBtn) {
+                    throw new Error('Required DOM elements not found');
+                }
+
+                // Load the In4viz library
+                console.log('📦 Loading In4viz library...');
+                const module = await import('../packages/core/dist/index.mjs');
+                In4viz = module.In4viz;
+                AWSProvider = module.AWSProvider;
+                console.log('✅ In4viz library loaded successfully');
+
+                // Create In4viz instance targeting our diagram container
                 in4vizInstance = new In4viz({ container });
                 updateStatus('Ready', 'success');
                 console.log('✅ In4viz instance created successfully');
+
+                // Add event listeners to buttons
+                basicBtn.addEventListener('click', renderBasicDemo);
+                complexBtn.addEventListener('click', renderComplexDemo);
+                clearBtn.addEventListener('click', clearDiagram);
+                downloadBtn.addEventListener('click', downloadSVG);
+
+                console.log('✅ Event listeners attached successfully');
+                console.log('🎉 Application initialized successfully!');
+
             } catch (error) {
-                console.error('Failed to initialize In4viz:', error);
-                showError('Failed to initialize In4viz: ' + error.message);
+                console.error('❌ Failed to initialize application:', error);
+                console.error('Error stack:', error.stack);
+                showError('Failed to initialize application: ' + error.message);
             }
-        });
+        }
+
+        // Check if DOM is already loaded
+        if (document.readyState === 'loading') {
+            // DOM is still loading, wait for DOMContentLoaded
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            // DOM is already loaded, initialize immediately
+            initializeApp();
+        }
 
         // Basic demo data
         function getBasicDemoData() {
@@ -531,14 +573,20 @@ in4viz.render(infrastructure);
 
         function updateStatus(message, type) {
             const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.style.color = type === 'error' ? '#c33' : type === 'success' ? '#28a745' : '#667eea';
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.style.color = type === 'error' ? '#c33' : type === 'success' ? '#28a745' : '#667eea';
+            }
         }
 
         function updateStats(resourceCount, connectionCount, renderTime) {
-            document.getElementById('resource-count').textContent = resourceCount;
-            document.getElementById('connection-count').textContent = connectionCount;
-            document.getElementById('render-time').textContent = renderTime + 'ms';
+            const resourceEl = document.getElementById('resource-count');
+            const connectionEl = document.getElementById('connection-count');
+            const timeEl = document.getElementById('render-time');
+
+            if (resourceEl) resourceEl.textContent = resourceCount;
+            if (connectionEl) connectionEl.textContent = connectionCount;
+            if (timeEl) timeEl.textContent = renderTime + 'ms';
         }
 
         function updateCodeSample(demoType) {
@@ -608,12 +656,6 @@ const infrastructure = {
 
 in4viz.render(infrastructure);`;
             }
-        }
-
-        function showError(message) {
-            console.error('🚨 Error:', message);
-            const container = document.getElementById('diagram-container');
-            container.innerHTML = `<div class="error">❌ ${message}</div>`;
         }
 
         // Add global error handler for better debugging
