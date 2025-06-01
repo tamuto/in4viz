@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In4viz - Browser Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+        }
+
+        .demo-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .diagram-container {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f8fafc;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .diagram-container svg {
+            max-width: 100%;
+            height: auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-panel {
+            background: #f8fafc;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ In4viz</h1>
+            <p>Infrastructure Visualization Library - Browser Demo</p>
+        </div>
+
+        <div class="content">
+            <div class="demo-section">
+                <h2>Interactive Demo</h2>
+
+                <div class="info-panel">
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="status">Ready</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Resources:</span>
+                        <span class="info-value" id="resource-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Connections:</span>
+                        <span class="info-value" id="connection-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Render Time:</span>
+                        <span class="info-value" id="render-time">-</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" onclick="renderBasicDemo()">🚀 Render Basic Demo</button>
+                    <button class="btn" onclick="renderComplexDemo()">🔧 Render Complex Demo</button>
+                    <button class="btn" onclick="clearDiagram()">🗑️ Clear Diagram</button>
+                    <button class="btn" onclick="downloadSVG()">💾 Download SVG</button>
+                </div>
+
+                <div class="diagram-container" id="diagram-container">
+                    <div class="loading">Click "Render Basic Demo" to see your first infrastructure diagram!</div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>Sample Code</h2>
+                <div class="code-block" id="code-sample">
+// Basic usage example
+const in4viz = new In4viz();
+
+const infrastructure = {
+  id: 'sample-infra',
+  provider: 'aws',
+  resources: [
+    {
+      id: 'vpc-1',
+      type: 'vpc',
+      name: 'Main VPC',
+      provider: 'aws',
+      properties: { cidr: '10.0.0.0/16' }
+    }
+    // ... more resources
+  ],
+  connections: [
+    { id: 'conn-1', from: 'vpc-1', to: 'subnet-1', type: 'contains' }
+  ]
+};
+
+in4viz.render(infrastructure);
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import In4viz library
+        let In4viz, AWSProvider;
+
+        try {
+            const module = await import('../packages/core/dist/index.mjs');
+            In4viz = module.In4viz;
+            AWSProvider = module.AWSProvider;
+            console.log('✅ In4viz library loaded successfully');
+        } catch (error) {
+            console.error('❌ Failed to load In4viz library:', error);
+            showError('Failed to load In4viz library: ' + error.message);
+        }
+
+        let currentInfrastructure = null;
+        let in4vizInstance = null;
+
+        // Initialize In4viz when page loads
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Wait for module loading if it's still in progress
+            while (!In4viz) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            try {
+                // Create In4viz instance targeting our diagram container
+                const container = document.getElementById('diagram-container');
+                in4vizInstance = new In4viz({ container });
+                updateStatus('Ready', 'success');
+                console.log('✅ In4viz instance created successfully');
+            } catch (error) {
+                console.error('Failed to initialize In4viz:', error);
+                showError('Failed to initialize In4viz: ' + error.message);
+            }
+        });
+
+        // Basic demo data
+        function getBasicDemoData() {
+            return {
+                id: 'basic-demo',
+                provider: 'aws',
+                resources: [
+                    {
+                        id: 'vpc-1',
+                        type: 'vpc',
+                        name: 'Main VPC',
+                        provider: 'aws',
+                        properties: {
+                            cidr: '10.0.0.0/16',
+                            region: 'us-east-1'
+                        },
+                        metadata: {
+                            color: '#FF9900'
+                        }
+                    },
+                    {
+                        id: 'subnet-1',
+                        type: 'subnet',
+                        name: 'Public Subnet',
+                        provider: 'aws',
+                        properties: {
+                            cidr: '10.0.1.0/24',
+                            availabilityZone: 'us-east-1a'
+                        },
+                        metadata: {}
+                    },
+                    {
+                        id: 'ec2-1',
+                        type: 'ec2-instance',
+                        name: 'Web Server',
+                        provider: 'aws',
+                        properties: {
+                            instanceType: 't3.micro'
+                        },
+                        metadata: {}
+                    }
+                ],
+                connections: [
+                    {
+                        id: 'conn-1',
+                        from: 'vpc-1',
+                        to: 'subnet-1',
+                        type: 'contains'
+                    },
+                    {
+                        id: 'conn-2',
+                        from: 'subnet-1',
+                        to: 'ec2-1',
+                        type: 'contains'
+                    }
+                ]
+            };
+        }
+
+        // Complex demo data
+        function getComplexDemoData() {
+            return {
+                id: 'complex-demo',
+                provider: 'aws',
+                resources: [
+                    {
+                        id: 'vpc-1',
+                        type: 'vpc',
+                        name: 'Production VPC',
+                        provider: 'aws',
+                        properties: { cidr: '10.0.0.0/16' },
+                        metadata: { color: '#FF9900' }
+                    },
+                    {
+                        id: 'subnet-1',
+                        type: 'subnet',
+                        name: 'Public Subnet 1',
+                        provider: 'aws',
+                        properties: { cidr: '10.0.1.0/24' },
+                        metadata: {}
+                    },
+                    {
+                        id: 'subnet-2',
+                        type: 'subnet',
+                        name: 'Private Subnet 1',
+                        provider: 'aws',
+                        properties: { cidr: '10.0.2.0/24' },
+                        metadata: {}
+                    },
+                    {
+                        id: 'alb-1',
+                        type: 'application-load-balancer',
+                        name: 'Web ALB',
+                        provider: 'aws',
+                        properties: {},
+                        metadata: { color: '#4CAF50' }
+                    },
+                    {
+                        id: 'ec2-1',
+                        type: 'ec2-instance',
+                        name: 'Web Server 1',
+                        provider: 'aws',
+                        properties: { instanceType: 't3.small' },
+                        metadata: {}
+                    },
+                    {
+                        id: 'ec2-2',
+                        type: 'ec2-instance',
+                        name: 'Web Server 2',
+                        provider: 'aws',
+                        properties: { instanceType: 't3.small' },
+                        metadata: {}
+                    },
+                    {
+                        id: 'rds-1',
+                        type: 'rds-instance',
+                        name: 'Database',
+                        provider: 'aws',
+                        properties: { engine: 'mysql' },
+                        metadata: { color: '#2196F3' }
+                    }
+                ],
+                connections: [
+                    { id: 'conn-1', from: 'vpc-1', to: 'subnet-1', type: 'contains' },
+                    { id: 'conn-2', from: 'vpc-1', to: 'subnet-2', type: 'contains' },
+                    { id: 'conn-3', from: 'subnet-1', to: 'alb-1', type: 'contains' },
+                    { id: 'conn-4', from: 'subnet-1', to: 'ec2-1', type: 'contains' },
+                    { id: 'conn-5', from: 'subnet-1', to: 'ec2-2', type: 'contains' },
+                    { id: 'conn-6', from: 'subnet-2', to: 'rds-1', type: 'contains' },
+                    { id: 'conn-7', from: 'alb-1', to: 'ec2-1', type: 'routes-to' },
+                    { id: 'conn-8', from: 'alb-1', to: 'ec2-2', type: 'routes-to' },
+                    { id: 'conn-9', from: 'ec2-1', to: 'rds-1', type: 'connects-to' },
+                    { id: 'conn-10', from: 'ec2-2', to: 'rds-1', type: 'connects-to' }
+                ]
+            };
+        }
+
+        function renderBasicDemo() {
+            renderDemo(getBasicDemoData(), 'Basic Demo');
+        }
+
+        function renderComplexDemo() {
+            renderDemo(getComplexDemoData(), 'Complex Demo');
+        }
+
+        function renderDemo(infrastructure, demoName) {
+            console.log('🎯 Starting render for:', demoName);
+
+            if (!In4viz) {
+                showError('In4viz library not loaded');
+                return;
+            }
+
+            if (!in4vizInstance) {
+                showError('In4viz not initialized');
+                return;
+            }
+
+            updateStatus('Rendering...', 'loading');
+
+            try {
+                const startTime = performance.now();
+
+                // Store current infrastructure
+                currentInfrastructure = infrastructure;
+
+                console.log('📊 Infrastructure data:', infrastructure);
+
+                // Render the diagram
+                in4vizInstance.render(infrastructure, {
+                    algorithm: 'hierarchical',
+                    spacing: { x: 150, y: 120 },
+                    margin: { top: 20, right: 20, bottom: 20, left: 20 }
+                });
+
+                const endTime = performance.now();
+                const renderTime = Math.round(endTime - startTime);
+
+                console.log('✅ Render completed in', renderTime, 'ms');
+
+                // Update UI
+                updateStatus(`${demoName} rendered successfully`, 'success');
+                updateStats(infrastructure.resources.length, infrastructure.connections.length, renderTime);
+
+                // Update code sample
+                updateCodeSample(demoName.toLowerCase());
+
+            } catch (error) {
+                console.error('❌ Render error:', error);
+                console.error('Error stack:', error.stack);
+                showError('Failed to render diagram: ' + error.message);
+                updateStatus('Render failed', 'error');
+            }
+        }
+
+        function clearDiagram() {
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = '<div class="loading">Click "Render Basic Demo" to see your first infrastructure diagram!</div>';
+            updateStatus('Ready', 'success');
+            updateStats(0, 0, '-');
+            currentInfrastructure = null;
+        }
+
+        function downloadSVG() {
+            if (!currentInfrastructure) {
+                showError('No diagram to download. Please render a diagram first.');
+                return;
+            }
+
+            try {
+                // Create a temporary In4viz instance for SVG generation
+                const tempIn4viz = new In4viz();
+                const svg = tempIn4viz.renderToString(currentInfrastructure, {
+                    algorithm: 'hierarchical',
+                    spacing: { x: 150, y: 120 },
+                    margin: { top: 20, right: 20, bottom: 20, left: 20 }
+                });
+
+                // Download the SVG
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'in4viz-diagram.svg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                updateStatus('SVG downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showError('Failed to download SVG: ' + error.message);
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.style.color = type === 'error' ? '#c33' : type === 'success' ? '#28a745' : '#667eea';
+        }
+
+        function updateStats(resourceCount, connectionCount, renderTime) {
+            document.getElementById('resource-count').textContent = resourceCount;
+            document.getElementById('connection-count').textContent = connectionCount;
+            document.getElementById('render-time').textContent = renderTime + 'ms';
+        }
+
+        function updateCodeSample(demoType) {
+            const codeEl = document.getElementById('code-sample');
+            if (demoType === 'basic demo') {
+                codeEl.textContent = `// Basic AWS Infrastructure Demo
+const in4viz = new In4viz({ container: document.getElementById('diagram') });
+
+const infrastructure = {
+  id: 'basic-demo',
+  provider: 'aws',
+  resources: [
+    {
+      id: 'vpc-1',
+      type: 'vpc',
+      name: 'Main VPC',
+      provider: 'aws',
+      properties: { cidr: '10.0.0.0/16' }
+    },
+    {
+      id: 'subnet-1',
+      type: 'subnet',
+      name: 'Public Subnet',
+      provider: 'aws',
+      properties: { cidr: '10.0.1.0/24' }
+    },
+    {
+      id: 'ec2-1',
+      type: 'ec2-instance',
+      name: 'Web Server',
+      provider: 'aws',
+      properties: { instanceType: 't3.micro' }
+    }
+  ],
+  connections: [
+    { id: 'conn-1', from: 'vpc-1', to: 'subnet-1', type: 'contains' },
+    { id: 'conn-2', from: 'subnet-1', to: 'ec2-1', type: 'contains' }
+  ]
+};
+
+in4viz.render(infrastructure);`;
+            } else {
+                codeEl.textContent = `// Complex AWS Infrastructure Demo
+const in4viz = new In4viz({ container: document.getElementById('diagram') });
+
+const infrastructure = {
+  id: 'complex-demo',
+  provider: 'aws',
+  resources: [
+    { id: 'vpc-1', type: 'vpc', name: 'Production VPC', provider: 'aws' },
+    { id: 'subnet-1', type: 'subnet', name: 'Public Subnet', provider: 'aws' },
+    { id: 'subnet-2', type: 'subnet', name: 'Private Subnet', provider: 'aws' },
+    { id: 'alb-1', type: 'application-load-balancer', name: 'Web ALB', provider: 'aws' },
+    { id: 'ec2-1', type: 'ec2-instance', name: 'Web Server 1', provider: 'aws' },
+    { id: 'ec2-2', type: 'ec2-instance', name: 'Web Server 2', provider: 'aws' },
+    { id: 'rds-1', type: 'rds-instance', name: 'Database', provider: 'aws' }
+  ],
+  connections: [
+    { id: 'conn-1', from: 'vpc-1', to: 'subnet-1', type: 'contains' },
+    { id: 'conn-2', from: 'vpc-1', to: 'subnet-2', type: 'contains' },
+    { id: 'conn-3', from: 'alb-1', to: 'ec2-1', type: 'routes-to' },
+    { id: 'conn-4', from: 'alb-1', to: 'ec2-2', type: 'routes-to' },
+    { id: 'conn-5', from: 'ec2-1', to: 'rds-1', type: 'connects-to' },
+    { id: 'conn-6', from: 'ec2-2', to: 'rds-1', type: 'connects-to' }
+  ]
+};
+
+in4viz.render(infrastructure);`;
+            }
+        }
+
+        function showError(message) {
+            console.error('🚨 Error:', message);
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        // Add global error handler for better debugging
+        window.addEventListener('error', function(e) {
+            console.error('🚨 Global error:', e.error);
+            showError('Unexpected error: ' + e.error.message);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('🚨 Unhandled promise rejection:', e.reason);
+            showError('Promise error: ' + e.reason.message || e.reason);
+        });
+    </script>
+</body>
+</html>

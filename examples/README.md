@@ -2,7 +2,9 @@
 
 This directory contains examples demonstrating how to use the In4viz infrastructure visualization library.
 
-## Basic Usage Example
+## Examples
+
+### 1. Basic Usage Example (Node.js)
 
 To run the basic usage example:
 
@@ -16,6 +18,36 @@ This example demonstrates:
 - Defining infrastructure data (VPC, subnet, EC2 instance)
 - Rendering an SVG diagram
 - Using AWS provider helpers
+
+### 2. Browser Demo (Interactive)
+
+To view the interactive browser demo:
+
+```bash
+# Start a local server
+cd /workspaces/claude/in4viz
+python3 -m http.server 8080
+
+# Open in browser
+open http://localhost:8080/examples/browser-demo.html
+```
+
+The browser demo features:
+- 🚀 **Interactive UI** - Render diagrams with button clicks
+- 🎨 **Live Visualization** - See infrastructure diagrams in real-time
+- 📊 **Multiple Examples** - Basic and complex infrastructure scenarios
+- 💾 **SVG Export** - Download generated diagrams
+- 📱 **Responsive Design** - Works on desktop and mobile
+- 🔧 **Live Code Samples** - See the code used to generate each diagram
+- ⚡ **Performance Metrics** - Track rendering time and resource counts
+
+#### Browser Demo Features
+
+1. **Basic Demo**: Simple AWS infrastructure (VPC → Subnet → EC2)
+2. **Complex Demo**: Multi-tier architecture with load balancers, databases, and multiple instances
+3. **SVG Export**: Download diagrams as SVG files
+4. **Real-time Statistics**: Resource count, connection count, and render time
+5. **Code Examples**: View the exact code used for each demo
 
 ## Core Package Status
 
