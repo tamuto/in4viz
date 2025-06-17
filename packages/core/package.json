@@ -35,10 +35,14 @@
     "access": "public"
   },
   "dependencies": {
-    "@svgdotjs/svg.js": "^3.2.4"
+    "cytoscape": "^3.29.2",
+    "cytoscape-dagre": "^2.5.0",
+    "cytoscape-cose-bilkent": "^4.1.0"
   },
   "devDependencies": {
+    "@types/cytoscape": "^3.19.16",
     "@types/jest": "^29.5.12",
+    "@types/node": "^22.14.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2"
   },
