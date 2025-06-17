@@ -1,278 +1,294 @@
-// Main In4viz class - the primary interface for the library
+// 新しいIn4vizメインクラス - Cytoscape.jsベース
 
-import { Infrastructure } from './types/infrastructure';
-import { LayoutOptions, LayoutResult } from './types/layout';
-import { RendererOptions, InteractionHandler, RenderTheme } from './types/renderer';
-import { ValidationResult } from './types/common';
-
-import { LayoutManager } from './core/layout';
-import { DefaultSVGRenderer } from './core/renderer';
-import { DataValidator, DataNormalizer } from './utils/data';
-import { defaultTheme, awsTheme, azureTheme, gcpTheme, darkTheme } from './core/renderer/themes';
+import { CytoscapeCore, NodeData, EdgeData, LayoutConfig } from './core/CytoscapeCore';
+import { ERDiagramRenderer } from './diagrams/ERDiagram';
+import { ERDiagram, ERTable, ERRelation, ERLayoutOptions } from './types/er';
 
 export interface In4vizOptions {
-  container?: Element;
-  width?: number;
-  height?: number;
-  theme?: RenderTheme | string;
-  layout?: Partial<LayoutOptions>;
-  enableInteraction?: boolean;
-  enableAnimation?: boolean;
+  container?: HTMLElement;
+  type?: 'er' | 'infrastructure' | 'generic';
+  headless?: boolean;
 }
 
 export class In4viz {
-  private container: Element;
-  private options: In4vizOptions;
-  private layoutManager: LayoutManager;
-  private renderer: DefaultSVGRenderer;
-  private validator: DataValidator;
-  private normalizer: DataNormalizer;
-  private infrastructure?: Infrastructure;
-  private lastLayoutResult?: LayoutResult;
+  private core: CytoscapeCore;
+  private erDiagram?: ERDiagramRenderer;
+  private type: string;
 
   constructor(options: In4vizOptions = {}) {
-    // Create default container if not provided
-    this.container = options.container || this.createDefaultContainer();
-    this.options = options;
+    this.type = options.type || 'generic';
 
-    // Initialize core components
-    this.layoutManager = new LayoutManager();
-    this.validator = new DataValidator();
-    this.normalizer = new DataNormalizer();
+    // 基本的なCytoscapeコアを初期化
+    this.core = new CytoscapeCore({
+      container: options.container,
+      headless: options.headless || !options.container
+    });
 
-    // Initialize renderer
-    const rendererOptions: RendererOptions = {
-      container: this.container,
-      width: options.width,
-      height: options.height,
-      theme: this.resolveTheme(options.theme),
-      enableInteraction: this.isNodeJS() ? false : (options.enableInteraction ?? true),
-      enableAnimation: options.enableAnimation ?? false
-    };
-
-    this.renderer = new DefaultSVGRenderer(rendererOptions);
-  }
-
-  private isNodeJS(): boolean {
-    return typeof window === 'undefined' && typeof document === 'undefined';
-  }
-
-  private createDefaultContainer(): Element {
-    // Create a temporary container for headless usage
-    if (typeof document !== 'undefined') {
-      const div = document.createElement('div');
-      div.style.visibility = 'hidden';
-      div.style.position = 'absolute';
-      div.style.top = '-9999px';
-      document.body.appendChild(div);
-      return div;
-    } else {
-      // For Node.js environment, create a mock element
-      return {
-        appendChild: () => {},
-        innerHTML: '',
-        setAttribute: () => {},
-        getAttribute: () => null,
-        removeChild: () => {},
-        querySelector: () => null,
-        querySelectorAll: () => []
-      } as any;
+    // 図の種類に応じて専用レンダラーを初期化
+    if (this.type === 'er') {
+      this.erDiagram = new ERDiagramRenderer(options.container);
     }
   }
 
-  /**
-   * Set infrastructure data
-   */
-  setData(infrastructure: Infrastructure): ValidationResult {
-    // Validate data
-    const validationResult = this.validator.validate(infrastructure);
+  // === 低次元API - 基本的なノード・エッジ操作 ===
 
-    if (!validationResult.isValid) {
-      console.warn('Infrastructure data validation failed:', validationResult.errors);
-      return validationResult;
+  addNode(data: NodeData): string {
+    return this.core.addNode(data);
+  }
+
+  removeNode(id: string): boolean {
+    return this.core.removeNode(id);
+  }
+
+  updateNode(id: string, data: Partial<NodeData>): boolean {
+    return this.core.updateNode(id, data);
+  }
+
+  getNode(id: string): NodeData | null {
+    return this.core.getNode(id);
+  }
+
+  getAllNodes(): NodeData[] {
+    return this.core.getAllNodes();
+  }
+
+  addEdge(data: EdgeData): string {
+    return this.core.addEdge(data);
+  }
+
+  removeEdge(id: string): boolean {
+    return this.core.removeEdge(id);
+  }
+
+  updateEdge(id: string, data: Partial<EdgeData>): boolean {
+    return this.core.updateEdge(id, data);
+  }
+
+  getEdge(id: string): EdgeData | null {
+    return this.core.getEdge(id);
+  }
+
+  getAllEdges(): EdgeData[] {
+    return this.core.getAllEdges();
+  }
+
+  // === レイアウト・表示操作 ===
+
+  setLayout(config: LayoutConfig): void {
+    this.core.setLayout(config);
+  }
+
+  fit(padding?: number): void {
+    this.core.fit(padding);
+  }
+
+  center(): void {
+    this.core.center();
+  }
+
+  zoom(level?: number): number {
+    return this.core.zoom(level);
+  }
+
+  pan(position?: { x: number; y: number }): { x: number; y: number } {
+    return this.core.pan(position);
+  }
+
+  // === 選択・フィルタリング ===
+
+  select(selector: string): string[] {
+    return this.core.select(selector);
+  }
+
+  highlight(nodeIds: string[]): void {
+    this.core.highlight(nodeIds);
+  }
+
+  filter(predicate: (element: any) => boolean): void {
+    this.core.filter(predicate);
+  }
+
+  // === ER図専用の高次元API ===
+
+  // ER図データの設定
+  setERData(diagram: ERDiagram): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized. Use type: "er" in constructor options.');
     }
-
-    // Normalize data
-    this.infrastructure = this.normalizer.normalize(infrastructure);
-
-    return validationResult;
+    this.erDiagram.setERData(diagram);
   }
 
-  /**
-   * Render the diagram
-   */
-  render(infrastructure?: Infrastructure, layoutOptions?: Partial<LayoutOptions>): SVGElement {
-    // If infrastructure data is provided, set it
-    if (infrastructure) {
-      const validationResult = this.setData(infrastructure);
-      if (!validationResult.isValid) {
-        throw new Error(`Invalid infrastructure data: ${validationResult.errors.join(', ')}`);
-      }
+  // テーブル操作
+  addTable(table: ERTable): string {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
     }
+    return this.erDiagram.addTable(table);
+  }
 
-    if (!this.infrastructure) {
-      throw new Error('No infrastructure data set. Call setData() first or provide data to render().');
+  removeTable(tableId: string): boolean {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
     }
+    return this.erDiagram.removeTable(tableId);
+  }
 
-    // If layout options are provided, update them
-    if (layoutOptions) {
-      this.options.layout = { ...this.options.layout, ...layoutOptions };
+  updateTable(tableId: string, updates: Partial<ERTable>): boolean {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
     }
-
-    // Calculate layout
-    const layoutOptionsToUse = this.getLayoutOptions();
-    this.lastLayoutResult = this.layoutManager.calculateLayout(
-      this.infrastructure.resources,
-      this.infrastructure.connections,
-      layoutOptionsToUse
-    );
-
-    // Render
-    return this.renderer.render(this.lastLayoutResult);
+    return this.erDiagram.updateTable(tableId, updates);
   }
 
-  /**
-   * Update layout options and re-render
-   */
-  setLayoutOptions(options: Partial<LayoutOptions>): void {
-    this.options.layout = { ...this.options.layout, ...options };
-
-    if (this.infrastructure) {
-      this.render();
+  // リレーション操作
+  addRelation(relation: ERRelation): string {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
     }
+    return this.erDiagram.addRelation(relation);
   }
 
-  /**
-   * Update theme and re-render
-   */
-  setTheme(theme: RenderTheme | string): void {
-    const resolvedTheme = this.resolveTheme(theme);
-    this.renderer.updateTheme(resolvedTheme);
-    this.options.theme = theme;
-
-    if (this.infrastructure) {
-      this.render();
+  removeRelation(relationId: string): boolean {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
     }
+    return this.erDiagram.removeRelation(relationId);
   }
 
-  /**
-   * Set interaction handlers
-   */
-  setInteractionHandler(handler: InteractionHandler): void {
-    this.renderer.setInteractionHandler(handler);
+  updateRelation(relationId: string, updates: Partial<ERRelation>): boolean {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    return this.erDiagram.updateRelation(relationId, updates);
   }
 
-  /**
-   * Render the diagram and return as SVG string
-   */
-  renderToString(infrastructure?: Infrastructure, layoutOptions?: Partial<LayoutOptions>): string {
-    this.render(infrastructure, layoutOptions);
-    return this.exportSVG();
+  // ER図レイアウト操作
+  applyERLayout(options: ERLayoutOptions = {}): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.applyLayout(options);
   }
 
-  /**
-   * Export diagram as SVG string
-   */
-  exportSVG(): string {
-    return this.renderer.exportToSVG();
+  // ER図検索・フィルタリング
+  findTables(predicate: (table: ERTable) => boolean): ERTable[] {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    return this.erDiagram.findTables(predicate);
   }
 
-  /**
-   * Export diagram as PNG data URL
-   */
+  highlightTables(tableIds: string[]): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.highlightTables(tableIds);
+  }
+
+  filterBySchema(schema: string): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.filterBySchema(schema);
+  }
+
+  showAllTables(): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.showAllTables();
+  }
+
+  // ER図データ取得
+  getERData(): ERDiagram {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    return this.erDiagram.getERData();
+  }
+
+  // === イベント処理 ===
+
+  on(event: string, callback: (event: any) => void): void {
+    this.core.on(event, callback);
+  }
+
+  off(event: string, callback?: (event: any) => void): void {
+    this.core.off(event, undefined, callback);
+  }
+
+  // ER図専用イベント
+  onTableClick(callback: (table: ERTable, event?: any) => void): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.onTableClick(callback);
+  }
+
+  onRelationClick(callback: (relation: ERRelation, event?: any) => void): void {
+    if (!this.erDiagram) {
+      throw new Error('ER diagram renderer not initialized.');
+    }
+    this.erDiagram.onRelationClick(callback);
+  }
+
+  // === エクスポート ===
+
   async exportPNG(): Promise<string> {
-    return this.renderer.exportToPNG();
+    if (this.erDiagram) {
+      return this.erDiagram.exportPNG();
+    }
+    return this.core.exportPNG();
   }
 
-  /**
-   * Get current layout result
-   */
-  getLayoutResult(): LayoutResult | undefined {
-    return this.lastLayoutResult;
+  async exportJPG(): Promise<string> {
+    if (this.erDiagram) {
+      return this.erDiagram.exportJPG();
+    }
+    return this.core.exportJPG();
   }
 
-  /**
-   * Get infrastructure data
-   */
-  getData(): Infrastructure | undefined {
-    return this.infrastructure;
-  }
+  // === ユーティリティ ===
 
-  /**
-   * Validate infrastructure data without setting it
-   */
-  validateData(infrastructure: Infrastructure): ValidationResult {
-    return this.validator.validate(infrastructure);
-  }
-
-  /**
-   * Clear the diagram
-   */
   clear(): void {
-    this.renderer.clear();
-    this.infrastructure = undefined;
-    this.lastLayoutResult = undefined;
+    if (this.erDiagram) {
+      this.erDiagram.clear();
+    } else {
+      this.core.clear();
+    }
   }
 
-  /**
-   * Destroy the instance and clean up resources
-   */
   destroy(): void {
-    this.clear();
-    this.container.innerHTML = '';
+    if (this.erDiagram) {
+      this.erDiagram.destroy();
+    }
+    this.core.destroy();
   }
 
-  private getLayoutOptions(): LayoutOptions {
-    const defaultOptions: LayoutOptions = {
-      algorithm: 'hierarchical',
-      spacing: { x: 120, y: 80 },
-      margin: { top: 50, right: 50, bottom: 50, left: 50 },
-      autoFit: true,
-      preserveAspectRatio: true
-    };
-
-    return { ...defaultOptions, ...this.options.layout };
-  }
-
-  private resolveTheme(theme?: RenderTheme | string): RenderTheme {
-    if (!theme) {
-      return defaultTheme;
-    }
-
-    if (typeof theme === 'string') {
-      // Load theme by name
-      switch (theme) {
-        case 'aws':
-          return awsTheme;
-        case 'azure':
-          return azureTheme;
-        case 'gcp':
-          return gcpTheme;
-        case 'dark':
-          return darkTheme;
-        default:
-          return defaultTheme;
-      }
-    }
-
-    return theme;
+  // Cytoscapeインスタンスの直接アクセス（上級者向け）
+  getCytoscape() {
+    return this.core.getCytoscape();
   }
 }
 
-// Static methods for convenience
+// === 便利な静的メソッド ===
+
 export namespace In4viz {
-  /**
-   * Create a new In4viz instance
-   */
-  export function create(options: In4vizOptions): In4viz {
-    return new In4viz(options);
+  // ER図専用のファクトリメソッド
+  export function createERDiagram(container?: HTMLElement): In4viz {
+    return new In4viz({ container, type: 'er' });
   }
 
-  /**
-   * Validate infrastructure data
-   */
-  export function validate(infrastructure: Infrastructure): ValidationResult {
-    const validator = new DataValidator();
-    return validator.validate(infrastructure);
+  // 汎用図のファクトリメソッド  
+  export function createGeneric(container?: HTMLElement): In4viz {
+    return new In4viz({ container, type: 'generic' });
+  }
+
+  // ヘッドレス（Node.js）モード
+  export function createHeadless(type: 'er' | 'generic' = 'generic'): In4viz {
+    return new In4viz({ headless: true, type });
   }
 }
+
+// デフォルトエクスポート
+export default In4viz;
