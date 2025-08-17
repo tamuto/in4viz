@@ -1,27 +1,28 @@
 // Cytoscape.js の核となるラッパークラス
 
 import cytoscape, { Core, NodeDefinition, EdgeDefinition } from 'cytoscape';
+// 直接プラグインをインポート（ブラウザ互換性のため）
+import dagre from 'cytoscape-dagre';
+import coseBilkent from 'cytoscape-cose-bilkent';
 
-// プラグインの同期的読み込み
+// プラグインの登録
 let pluginsLoaded = false;
 
 const loadPlugins = () => {
   if (pluginsLoaded) return;
   
   try {
-    const dagre = require('cytoscape-dagre');
     cytoscape.use(dagre);
     console.log('cytoscape-dagre plugin loaded');
   } catch (e) {
-    console.warn('cytoscape-dagre plugin could not be loaded');
+    console.warn('cytoscape-dagre plugin could not be loaded:', e);
   }
   
   try {
-    const coseBilkent = require('cytoscape-cose-bilkent');
     cytoscape.use(coseBilkent);
     console.log('cytoscape-cose-bilkent plugin loaded');
   } catch (e) {
-    console.warn('cytoscape-cose-bilkent plugin could not be loaded');
+    console.warn('cytoscape-cose-bilkent plugin could not be loaded:', e);
   }
   
   pluginsLoaded = true;

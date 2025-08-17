@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In4viz - ER Diagram Browser Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+        }
+
+        .demo-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.layout-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .btn.danger-btn {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+
+        .diagram-container {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f8fafc;
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagram-container canvas {
+            max-width: 100%;
+            height: auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-panel {
+            background: #f8fafc;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .layout-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .table-controls {
+            background: #f8fafc;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .table-controls h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ In4viz ER Diagram</h1>
+            <p>Entity-Relationship Diagram Visualization - Browser Demo</p>
+        </div>
+
+        <div class="content">
+            <div class="demo-section">
+                <h2>Interactive ER Diagram Demo</h2>
+
+                <div class="info-panel">
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="status">Ready</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tables:</span>
+                        <span class="info-value" id="table-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Relations:</span>
+                        <span class="info-value" id="relation-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Render Time:</span>
+                        <span class="info-value" id="render-time">-</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="blog-demo-btn">📝 Render Blog DB Demo</button>
+                    <button class="btn" id="ecommerce-demo-btn">🛒 Render E-commerce Demo</button>
+                    <button class="btn danger-btn" id="clear-btn">🗑️ Clear Diagram</button>
+                    <button class="btn" id="download-btn">💾 Download PNG</button>
+                </div>
+
+                <div class="layout-controls">
+                    <h3>Layout Options:</h3>
+                    <button class="btn layout-btn" id="layout-dagre">📊 Dagre (Hierarchical)</button>
+                    <button class="btn layout-btn" id="layout-cose">🌀 Cose (Force)</button>
+                    <button class="btn layout-btn" id="layout-grid">🔲 Grid</button>
+                    <button class="btn layout-btn" id="layout-circle">⭕ Circle</button>
+                </div>
+
+                <div class="table-controls">
+                    <h3>Table Operations:</h3>
+                    <div class="controls">
+                        <button class="btn" id="add-table-btn">➕ Add Sample Table</button>
+                        <button class="btn" id="highlight-pk-btn">🔑 Highlight Primary Keys</button>
+                        <button class="btn" id="highlight-fk-btn">🔗 Highlight Foreign Keys</button>
+                        <button class="btn" id="fit-view-btn">📐 Fit to View</button>
+                    </div>
+                </div>
+
+                <div class="diagram-container" id="diagram-container">
+                    <div class="loading">Click "Render Blog DB Demo" to see your first ER diagram!</div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>Sample Code</h2>
+                <div class="code-block" id="code-sample">
+// Basic ER diagram usage
+import { In4viz } from '@infodb/in4viz';
+
+// Create ER diagram instance
+const er = In4viz.createERDiagram(container);
+
+// Define table structure
+const userTable = {
+  id: 'users',
+  name: 'users',
+  columns: [
+    { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+    { name: 'email', type: 'VARCHAR(255)', unique: true, nullable: false },
+    { name: 'name', type: 'VARCHAR(100)', nullable: false },
+    { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+  ]
+};
+
+// Add table
+er.addTable(userTable);
+
+// Apply layout
+er.applyERLayout({ algorithm: 'dagre', direction: 'TB' });
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import In4viz library
+        let In4viz;
+        let erInstance = null;
+        let currentERData = null;
+
+        // Function to show error messages
+        function showError(message) {
+            console.error('🚨 Error:', message);
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        // Make showError globally accessible for error handling
+        window.showError = showError;
+
+        // Function to initialize the application
+        async function initializeApp() {
+            console.log('🚀 Initializing In4viz ER Diagram application...');
+
+            try {
+                // Check if required elements exist
+                const container = document.getElementById('diagram-container');
+                if (!container) {
+                    throw new Error('Diagram container not found');
+                }
+
+                // Load the In4viz library
+                console.log('📦 Loading In4viz library...');
+                const module = await import('../packages/core/dist/index.mjs');
+                In4viz = module.In4viz;
+                console.log('✅ In4viz library loaded successfully');
+
+                // Create ER diagram instance
+                erInstance = In4viz.createERDiagram(container);
+                updateStatus('Ready', 'success');
+                console.log('✅ ER diagram instance created successfully');
+
+                // Add event listeners
+                setupEventListeners();
+
+                console.log('🎉 Application initialized successfully!');
+
+            } catch (error) {
+                console.error('❌ Failed to initialize application:', error);
+                showError('Failed to initialize application: ' + error.message);
+            }
+        }
+
+        function setupEventListeners() {
+            // Demo buttons
+            document.getElementById('blog-demo-btn')?.addEventListener('click', renderBlogDemo);
+            document.getElementById('ecommerce-demo-btn')?.addEventListener('click', renderEcommerceDemo);
+            document.getElementById('clear-btn')?.addEventListener('click', clearDiagram);
+            document.getElementById('download-btn')?.addEventListener('click', downloadPNG);
+
+            // Layout buttons
+            document.getElementById('layout-dagre')?.addEventListener('click', () => applyLayout('dagre'));
+            document.getElementById('layout-cose')?.addEventListener('click', () => applyLayout('cose'));
+            document.getElementById('layout-grid')?.addEventListener('click', () => applyLayout('grid'));
+            document.getElementById('layout-circle')?.addEventListener('click', () => applyLayout('circle'));
+
+            // Table operation buttons
+            document.getElementById('add-table-btn')?.addEventListener('click', addSampleTable);
+            document.getElementById('highlight-pk-btn')?.addEventListener('click', highlightPrimaryKeys);
+            document.getElementById('highlight-fk-btn')?.addEventListener('click', highlightForeignKeys);
+            document.getElementById('fit-view-btn')?.addEventListener('click', fitToView);
+        }
+
+        // Check if DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Blog database demo data
+        function getBlogDemoData() {
+            return {
+                tables: [
+                    {
+                        id: 'users',
+                        name: 'users',
+                        schema: 'public',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'email', type: 'VARCHAR(255)', unique: true, nullable: false },
+                            { name: 'name', type: 'VARCHAR(100)', nullable: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' },
+                            { name: 'updated_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    },
+                    {
+                        id: 'posts',
+                        name: 'posts',
+                        schema: 'public',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'user_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'title', type: 'VARCHAR(200)', nullable: false },
+                            { name: 'content', type: 'TEXT', nullable: true },
+                            { name: 'published', type: 'BOOLEAN', defaultValue: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    },
+                    {
+                        id: 'comments',
+                        name: 'comments',
+                        schema: 'public',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'post_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'user_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'content', type: 'TEXT', nullable: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    }
+                ],
+                relations: [
+                    {
+                        id: 'users_posts',
+                        from: { table: 'users', column: 'id' },
+                        to: { table: 'posts', column: 'user_id' },
+                        type: 'one-to-many',
+                        name: 'user_posts',
+                        onDelete: 'CASCADE'
+                    },
+                    {
+                        id: 'posts_comments',
+                        from: { table: 'posts', column: 'id' },
+                        to: { table: 'comments', column: 'post_id' },
+                        type: 'one-to-many',
+                        name: 'post_comments',
+                        onDelete: 'CASCADE'
+                    },
+                    {
+                        id: 'users_comments',
+                        from: { table: 'users', column: 'id' },
+                        to: { table: 'comments', column: 'user_id' },
+                        type: 'one-to-many',
+                        name: 'user_comments',
+                        onDelete: 'SET NULL'
+                    }
+                ]
+            };
+        }
+
+        // E-commerce database demo data
+        function getEcommerceDemoData() {
+            return {
+                tables: [
+                    {
+                        id: 'customers',
+                        name: 'customers',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'email', type: 'VARCHAR(255)', unique: true },
+                            { name: 'first_name', type: 'VARCHAR(100)' },
+                            { name: 'last_name', type: 'VARCHAR(100)' },
+                            { name: 'phone', type: 'VARCHAR(20)' }
+                        ]
+                    },
+                    {
+                        id: 'products',
+                        name: 'products',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'name', type: 'VARCHAR(200)' },
+                            { name: 'price', type: 'DECIMAL(10,2)' },
+                            { name: 'category_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'stock_quantity', type: 'INTEGER' }
+                        ]
+                    },
+                    {
+                        id: 'categories',
+                        name: 'categories',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'name', type: 'VARCHAR(100)' },
+                            { name: 'description', type: 'TEXT' }
+                        ]
+                    },
+                    {
+                        id: 'orders',
+                        name: 'orders',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'customer_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'order_date', type: 'TIMESTAMP' },
+                            { name: 'total_amount', type: 'DECIMAL(10,2)' },
+                            { name: 'status', type: 'VARCHAR(50)' }
+                        ]
+                    },
+                    {
+                        id: 'order_items',
+                        name: 'order_items',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'order_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'product_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'quantity', type: 'INTEGER' },
+                            { name: 'price', type: 'DECIMAL(10,2)' }
+                        ]
+                    }
+                ],
+                relations: [
+                    {
+                        id: 'categories_products',
+                        from: { table: 'categories', column: 'id' },
+                        to: { table: 'products', column: 'category_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'customers_orders',
+                        from: { table: 'customers', column: 'id' },
+                        to: { table: 'orders', column: 'customer_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'orders_order_items',
+                        from: { table: 'orders', column: 'id' },
+                        to: { table: 'order_items', column: 'order_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'products_order_items',
+                        from: { table: 'products', column: 'id' },
+                        to: { table: 'order_items', column: 'product_id' },
+                        type: 'one-to-many'
+                    }
+                ]
+            };
+        }
+
+        function renderBlogDemo() {
+            renderERDemo(getBlogDemoData(), 'Blog Database');
+        }
+
+        function renderEcommerceDemo() {
+            renderERDemo(getEcommerceDemoData(), 'E-commerce Database');
+        }
+
+        function renderERDemo(erData, demoName) {
+            console.log('🎯 Starting ER render for:', demoName);
+
+            if (!erInstance) {
+                showError('ER diagram not initialized');
+                return;
+            }
+
+            updateStatus('Rendering...', 'loading');
+
+            try {
+                const startTime = performance.now();
+
+                // Store current ER data
+                currentERData = erData;
+
+                console.log('📊 ER data:', erData);
+
+                // Set ER data and render
+                erInstance.setERData(erData);
+
+                const endTime = performance.now();
+                const renderTime = Math.round(endTime - startTime);
+
+                console.log('✅ ER render completed in', renderTime, 'ms');
+
+                // Update UI
+                updateStatus(`${demoName} rendered successfully`, 'success');
+                updateStats(erData.tables.length, erData.relations.length, renderTime);
+
+                // Update code sample
+                updateCodeSample(demoName);
+
+            } catch (error) {
+                console.error('❌ ER render error:', error);
+                showError('Failed to render ER diagram: ' + error.message);
+                updateStatus('Render failed', 'error');
+            }
+        }
+
+        function applyLayout(layoutType) {
+            if (!erInstance || !currentERData) {
+                showError('No diagram to layout. Please render a diagram first.');
+                return;
+            }
+
+            try {
+                const layoutOptions = {
+                    dagre: { algorithm: 'dagre', direction: 'TB', fit: true },
+                    cose: { algorithm: 'cose', fit: true },
+                    grid: { algorithm: 'grid', fit: true },
+                    circle: { algorithm: 'circle', fit: true }
+                };
+
+                erInstance.applyERLayout(layoutOptions[layoutType]);
+                updateStatus(`${layoutType.toUpperCase()} layout applied`, 'success');
+            } catch (error) {
+                console.error('Layout error:', error);
+                showError('Failed to apply layout: ' + error.message);
+            }
+        }
+
+        function addSampleTable() {
+            if (!erInstance) {
+                showError('ER diagram not initialized');
+                return;
+            }
+
+            try {
+                const newTable = {
+                    id: 'sample_' + Date.now(),
+                    name: 'sample_table',
+                    columns: [
+                        { name: 'id', type: 'SERIAL', primaryKey: true },
+                        { name: 'name', type: 'VARCHAR(100)' },
+                        { name: 'created_at', type: 'TIMESTAMP' }
+                    ]
+                };
+
+                erInstance.addTable(newTable);
+                updateStatus('Sample table added', 'success');
+
+                // Update current data
+                if (currentERData) {
+                    currentERData.tables.push(newTable);
+                    updateStats(currentERData.tables.length, currentERData.relations.length, '-');
+                }
+            } catch (error) {
+                console.error('Add table error:', error);
+                showError('Failed to add table: ' + error.message);
+            }
+        }
+
+        function highlightPrimaryKeys() {
+            if (!erInstance || !currentERData) {
+                showError('No diagram to highlight. Please render a diagram first.');
+                return;
+            }
+
+            try {
+                const pkTables = currentERData.tables
+                    .filter(table => table.columns.some(col => col.primaryKey))
+                    .map(table => table.id);
+                
+                erInstance.highlightTables(pkTables);
+                updateStatus('Primary key tables highlighted', 'success');
+            } catch (error) {
+                console.error('Highlight error:', error);
+                showError('Failed to highlight: ' + error.message);
+            }
+        }
+
+        function highlightForeignKeys() {
+            if (!erInstance || !currentERData) {
+                showError('No diagram to highlight. Please render a diagram first.');
+                return;
+            }
+
+            try {
+                const fkTables = currentERData.tables
+                    .filter(table => table.columns.some(col => col.foreignKey))
+                    .map(table => table.id);
+                
+                erInstance.highlightTables(fkTables);
+                updateStatus('Foreign key tables highlighted', 'success');
+            } catch (error) {
+                console.error('Highlight error:', error);
+                showError('Failed to highlight: ' + error.message);
+            }
+        }
+
+        function fitToView() {
+            if (!erInstance) {
+                showError('ER diagram not initialized');
+                return;
+            }
+
+            try {
+                erInstance.fit();
+                updateStatus('View fitted to diagram', 'success');
+            } catch (error) {
+                console.error('Fit error:', error);
+                showError('Failed to fit view: ' + error.message);
+            }
+        }
+
+        function clearDiagram() {
+            if (erInstance) {
+                erInstance.clear();
+            }
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = '<div class="loading">Click "Render Blog DB Demo" to see your first ER diagram!</div>';
+            updateStatus('Ready', 'success');
+            updateStats(0, 0, '-');
+            currentERData = null;
+        }
+
+        async function downloadPNG() {
+            if (!erInstance || !currentERData) {
+                showError('No diagram to download. Please render a diagram first.');
+                return;
+            }
+
+            try {
+                updateStatus('Generating PNG...', 'loading');
+                const png = await erInstance.exportPNG();
+                
+                // Download the PNG
+                const a = document.createElement('a');
+                a.href = png;
+                a.download = 'er-diagram.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                updateStatus('PNG downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showError('Failed to download PNG: ' + error.message);
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.style.color = type === 'error' ? '#c33' : type === 'success' ? '#28a745' : '#667eea';
+            }
+        }
+
+        function updateStats(tableCount, relationCount, renderTime) {
+            const tableEl = document.getElementById('table-count');
+            const relationEl = document.getElementById('relation-count');
+            const timeEl = document.getElementById('render-time');
+
+            if (tableEl) tableEl.textContent = tableCount;
+            if (relationEl) relationEl.textContent = relationCount;
+            if (timeEl) timeEl.textContent = renderTime + (renderTime === '-' ? '' : 'ms');
+        }
+
+        function updateCodeSample(demoName) {
+            const codeEl = document.getElementById('code-sample');
+            if (demoName.includes('Blog')) {
+                codeEl.textContent = `// Blog Database ER Diagram
+import { In4viz } from '@infodb/in4viz';
+
+// Create ER diagram instance
+const er = In4viz.createERDiagram(container);
+
+// Define database schema
+const blogSchema = {
+  tables: [
+    {
+      id: 'users',
+      name: 'users',
+      columns: [
+        { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+        { name: 'email', type: 'VARCHAR(255)', unique: true, nullable: false },
+        { name: 'name', type: 'VARCHAR(100)', nullable: false }
+      ]
+    },
+    {
+      id: 'posts',
+      name: 'posts',
+      columns: [
+        { name: 'id', type: 'SERIAL', primaryKey: true },
+        { name: 'user_id', type: 'INTEGER', foreignKey: true },
+        { name: 'title', type: 'VARCHAR(200)' },
+        { name: 'content', type: 'TEXT' }
+      ]
+    }
+  ],
+  relations: [
+    {
+      id: 'users_posts',
+      from: { table: 'users', column: 'id' },
+      to: { table: 'posts', column: 'user_id' },
+      type: 'one-to-many'
+    }
+  ]
+};
+
+// Render the ER diagram
+er.setERData(blogSchema);
+er.applyERLayout({ algorithm: 'dagre', direction: 'TB' });`;
+            } else {
+                codeEl.textContent = `// E-commerce Database ER Diagram
+import { In4viz } from '@infodb/in4viz';
+
+const er = In4viz.createERDiagram(container);
+
+const ecommerceSchema = {
+  tables: [
+    {
+      id: 'customers',
+      name: 'customers',
+      columns: [
+        { name: 'id', type: 'SERIAL', primaryKey: true },
+        { name: 'email', type: 'VARCHAR(255)', unique: true },
+        { name: 'first_name', type: 'VARCHAR(100)' }
+      ]
+    },
+    {
+      id: 'orders',
+      name: 'orders', 
+      columns: [
+        { name: 'id', type: 'SERIAL', primaryKey: true },
+        { name: 'customer_id', type: 'INTEGER', foreignKey: true },
+        { name: 'total_amount', type: 'DECIMAL(10,2)' }
+      ]
+    }
+  ],
+  relations: [
+    {
+      id: 'customers_orders',
+      from: { table: 'customers', column: 'id' },
+      to: { table: 'orders', column: 'customer_id' },
+      type: 'one-to-many'
+    }
+  ]
+};
+
+er.setERData(ecommerceSchema);
+er.applyERLayout({ algorithm: 'cose' });`;
+            }
+        }
+
+        // Add global error handlers
+        window.addEventListener('error', function(e) {
+            console.error('🚨 Global error:', e.error);
+            showError('Unexpected error: ' + e.error.message);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('🚨 Unhandled promise rejection:', e.reason);
+            showError('Promise error: ' + e.reason.message || e.reason);
+        });
+    </script>
+</body>
+</html>
