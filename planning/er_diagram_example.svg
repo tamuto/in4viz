@@ -1,0 +1,80 @@
+<svg width="1200" height="600" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<style>
+text { font-family: Arial, sans-serif; }
+</style>
+</defs>
+<rect width="1200" height="600" fill="#f8f9fa" stroke="none"/>
+<rect x="50" y="50" width="299" height="113" fill="white" stroke="black" stroke-width="2"/>
+<rect x="50" y="50" width="299" height="25" fill="#e6f3ff" stroke="black" stroke-width="1"/>
+<text x="55" y="66" font-family="Arial" font-size="12" font-weight="bold">ユーザー (users)</text>
+<text x="55" y="89" font-family="Arial" font-size="10" font-weight="normal" fill="black">ユーザーID</text>
+<text x="142" y="89" font-family="Arial" font-size="10" fill="black">id</text>
+<text x="212" y="89" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="294" y="89" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="55" y="111" font-family="Arial" font-size="10" font-weight="normal" fill="black">ユーザー名</text>
+<text x="142" y="111" font-family="Arial" font-size="10" fill="black">username</text>
+<text x="212" y="111" font-family="Arial" font-size="9" fill="black">VARCHAR(50)</text>
+<text x="294" y="111" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="55" y="133" font-family="Arial" font-size="10" font-weight="normal" fill="black">メールアドレス</text>
+<text x="142" y="133" font-family="Arial" font-size="10" fill="black">email</text>
+<text x="212" y="133" font-family="Arial" font-size="9" fill="black">VARCHAR(100)</text>
+<text x="294" y="133" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="55" y="155" font-family="Arial" font-size="10" font-weight="normal" fill="black">作成日時</text>
+<text x="142" y="155" font-family="Arial" font-size="10" fill="black">created_at</text>
+<text x="212" y="155" font-family="Arial" font-size="9" fill="black">TIMESTAMP</text>
+<text x="294" y="155" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<line x1="50" y1="97" x2="349" y2="97" stroke="black" stroke-width="1"/>
+<rect x="399" y="50" width="322" height="135" fill="white" stroke="black" stroke-width="2"/>
+<rect x="399" y="50" width="322" height="25" fill="#e6f3ff" stroke="black" stroke-width="1"/>
+<text x="404" y="66" font-family="Arial" font-size="12" font-weight="bold">投稿 (posts)</text>
+<text x="404" y="89" font-family="Arial" font-size="10" font-weight="normal" fill="black">投稿ID</text>
+<text x="480" y="89" font-family="Arial" font-size="10" fill="black">id</text>
+<text x="562" y="89" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="644" y="89" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="404" y="111" font-family="Arial" font-size="10" font-weight="normal" fill="black">ユーザーID</text>
+<text x="480" y="111" font-family="Arial" font-size="10" fill="black">user_id</text>
+<text x="562" y="111" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="644" y="111" font-family="Arial" font-size="9" fill="black">NOT NULL, FK</text>
+<text x="404" y="133" font-family="Arial" font-size="10" font-weight="normal" fill="black">タイトル</text>
+<text x="480" y="133" font-family="Arial" font-size="10" fill="black">title</text>
+<text x="562" y="133" font-family="Arial" font-size="9" fill="black">VARCHAR(200)</text>
+<text x="644" y="133" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="404" y="155" font-family="Arial" font-size="10" font-weight="normal" fill="black">本文</text>
+<text x="480" y="155" font-family="Arial" font-size="10" fill="black">content</text>
+<text x="562" y="155" font-family="Arial" font-size="9" fill="black">TEXT</text>
+<text x="644" y="155" font-family="Arial" font-size="9" fill="black"></text>
+<text x="404" y="177" font-family="Arial" font-size="10" font-weight="normal" fill="black">公開日時</text>
+<text x="480" y="177" font-family="Arial" font-size="10" fill="black">published_at</text>
+<text x="562" y="177" font-family="Arial" font-size="9" fill="black">TIMESTAMP</text>
+<text x="644" y="177" font-family="Arial" font-size="9" fill="black"></text>
+<line x1="399" y1="97" x2="721" y2="97" stroke="black" stroke-width="1"/>
+<rect x="50" y="250" width="294" height="91" fill="white" stroke="black" stroke-width="2"/>
+<rect x="50" y="250" width="294" height="25" fill="#e6f3ff" stroke="black" stroke-width="1"/>
+<text x="55" y="266" font-family="Arial" font-size="12" font-weight="bold">カテゴリ (categories)</text>
+<text x="55" y="289" font-family="Arial" font-size="10" font-weight="normal" fill="black">カテゴリID</text>
+<text x="131" y="289" font-family="Arial" font-size="10" fill="black">id</text>
+<text x="207" y="289" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="289" y="289" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="55" y="311" font-family="Arial" font-size="10" font-weight="normal" fill="black">カテゴリ名</text>
+<text x="131" y="311" font-family="Arial" font-size="10" fill="black">name</text>
+<text x="207" y="311" font-family="Arial" font-size="9" fill="black">VARCHAR(100)</text>
+<text x="289" y="311" font-family="Arial" font-size="9" fill="black">NOT NULL</text>
+<text x="55" y="333" font-family="Arial" font-size="10" font-weight="normal" fill="black">説明</text>
+<text x="131" y="333" font-family="Arial" font-size="10" fill="black">description</text>
+<text x="207" y="333" font-family="Arial" font-size="9" fill="black">TEXT</text>
+<text x="289" y="333" font-family="Arial" font-size="9" fill="black"></text>
+<line x1="50" y1="297" x2="344" y2="297" stroke="black" stroke-width="1"/>
+<rect x="394" y="250" width="279" height="91" fill="white" stroke="black" stroke-width="2"/>
+<rect x="394" y="250" width="279" height="25" fill="#e6f3ff" stroke="black" stroke-width="1"/>
+<text x="399" y="266" font-family="Arial" font-size="12" font-weight="bold">投稿カテゴリ (post_categories)</text>
+<text x="399" y="289" font-family="Arial" font-size="10" font-weight="normal" fill="black">投稿ID</text>
+<text x="475" y="289" font-family="Arial" font-size="10" fill="black">post_id</text>
+<text x="551" y="289" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="596" y="289" font-family="Arial" font-size="9" fill="black">NOT NULL, FK</text>
+<text x="399" y="311" font-family="Arial" font-size="10" font-weight="normal" fill="black">カテゴリID</text>
+<text x="475" y="311" font-family="Arial" font-size="10" fill="black">category_id</text>
+<text x="551" y="311" font-family="Arial" font-size="9" fill="black">INT</text>
+<text x="596" y="311" font-family="Arial" font-size="9" fill="black">NOT NULL, FK</text>
+<line x1="394" y1="319" x2="673" y2="319" stroke="black" stroke-width="1"/>
+</svg>
