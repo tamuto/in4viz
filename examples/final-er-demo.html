@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In4viz ER Diagram - Final Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+        }
+
+        .demo-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.layout-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .btn.danger-btn {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+
+        .diagram-container {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f8fafc;
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-panel {
+            background: #f8fafc;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #363;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ In4viz ER Diagram</h1>
+            <p>Complete ER Diagram Visualization - CDN + In4viz Demo</p>
+        </div>
+
+        <div class="content">
+            <div class="demo-section">
+                <h2>🎯 Final In4viz ER Demo</h2>
+
+                <div class="info-panel">
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="status">Initializing...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Library Size:</span>
+                        <span class="info-value">CDN (Lightweight)</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tables:</span>
+                        <span class="info-value" id="table-count">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Relations:</span>
+                        <span class="info-value" id="relation-count">0</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="blog-demo-btn">📝 Blog Database</button>
+                    <button class="btn" id="ecommerce-demo-btn">🛒 E-commerce Database</button>
+                    <button class="btn" id="university-demo-btn">🎓 University Database</button>
+                </div>
+
+                <div class="controls">
+                    <button class="btn layout-btn" id="layout-dagre">📊 Dagre Layout</button>
+                    <button class="btn layout-btn" id="layout-cose">🌀 Cose Layout</button>
+                    <button class="btn layout-btn" id="layout-grid">🔲 Grid Layout</button>
+                    <button class="btn layout-btn" id="layout-circle">⭕ Circle Layout</button>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="add-sample-btn">➕ Add Sample Table</button>
+                    <button class="btn" id="highlight-pk-btn">🔑 Highlight PKs</button>
+                    <button class="btn" id="highlight-fk-btn">🔗 Highlight FKs</button>
+                    <button class="btn" id="fit-view-btn">📐 Fit View</button>
+                    <button class="btn danger-btn" id="clear-btn">🗑️ Clear</button>
+                </div>
+
+                <div id="message-area"></div>
+
+                <div class="diagram-container" id="diagram-container">
+                    <div class="loading">Loading In4viz ER Diagram...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN Dependencies -->
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+
+    <script type="module">
+        let In4viz, erInstance;
+        const messageArea = document.getElementById('message-area');
+        
+        function showMessage(message, type = 'success') {
+            messageArea.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => messageArea.innerHTML = '', 3000);
+        }
+
+        function updateStatus(status) {
+            document.getElementById('status').textContent = status;
+        }
+
+        function updateStats(tables, relations) {
+            document.getElementById('table-count').textContent = tables;
+            document.getElementById('relation-count').textContent = relations;
+        }
+
+        // Initialize
+        async function init() {
+            try {
+                updateStatus('Loading In4viz...');
+                
+                // Load In4viz library (now lightweight)
+                const module = await import('../packages/core/dist/index.mjs');
+                In4viz = module.In4viz;
+                
+                // Create ER diagram instance
+                const container = document.getElementById('diagram-container');
+                erInstance = In4viz.createERDiagram(container);
+                
+                updateStatus('Ready');
+                showMessage('✅ In4viz ER Diagram loaded successfully!');
+                
+                // Setup event handlers
+                setupEventHandlers();
+                
+                // Auto-load blog demo
+                setTimeout(() => {
+                    loadBlogDemo();
+                }, 500);
+                
+            } catch (error) {
+                console.error('Init error:', error);
+                updateStatus('Failed');
+                showMessage('❌ Failed to load In4viz: ' + error.message, 'error');
+            }
+        }
+
+        function setupEventHandlers() {
+            document.getElementById('blog-demo-btn').addEventListener('click', loadBlogDemo);
+            document.getElementById('ecommerce-demo-btn').addEventListener('click', loadEcommerceDemo);
+            document.getElementById('university-demo-btn').addEventListener('click', loadUniversityDemo);
+            
+            document.getElementById('layout-dagre').addEventListener('click', () => applyLayout('dagre'));
+            document.getElementById('layout-cose').addEventListener('click', () => applyLayout('cose'));
+            document.getElementById('layout-grid').addEventListener('click', () => applyLayout('grid'));
+            document.getElementById('layout-circle').addEventListener('click', () => applyLayout('circle'));
+            
+            document.getElementById('add-sample-btn').addEventListener('click', addSampleTable);
+            document.getElementById('highlight-pk-btn').addEventListener('click', highlightPrimaryKeys);
+            document.getElementById('highlight-fk-btn').addEventListener('click', highlightForeignKeys);
+            document.getElementById('fit-view-btn').addEventListener('click', () => erInstance?.fit());
+            document.getElementById('clear-btn').addEventListener('click', clearDiagram);
+        }
+
+        // Demo Data
+        function getBlogData() {
+            return {
+                tables: [
+                    {
+                        id: 'users',
+                        name: 'users',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'email', type: 'VARCHAR(255)', unique: true, nullable: false },
+                            { name: 'name', type: 'VARCHAR(100)', nullable: false },
+                            { name: 'password_hash', type: 'VARCHAR(255)', nullable: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    },
+                    {
+                        id: 'posts',
+                        name: 'posts',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'user_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'title', type: 'VARCHAR(200)', nullable: false },
+                            { name: 'content', type: 'TEXT', nullable: true },
+                            { name: 'published', type: 'BOOLEAN', defaultValue: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    },
+                    {
+                        id: 'comments',
+                        name: 'comments',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true, nullable: false },
+                            { name: 'post_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'user_id', type: 'INTEGER', foreignKey: true, nullable: false },
+                            { name: 'content', type: 'TEXT', nullable: false },
+                            { name: 'created_at', type: 'TIMESTAMP', defaultValue: 'NOW()' }
+                        ]
+                    }
+                ],
+                relations: [
+                    {
+                        id: 'users_posts',
+                        from: { table: 'users', column: 'id' },
+                        to: { table: 'posts', column: 'user_id' },
+                        type: 'one-to-many',
+                        name: 'writes'
+                    },
+                    {
+                        id: 'posts_comments',
+                        from: { table: 'posts', column: 'id' },
+                        to: { table: 'comments', column: 'post_id' },
+                        type: 'one-to-many',
+                        name: 'has'
+                    },
+                    {
+                        id: 'users_comments',
+                        from: { table: 'users', column: 'id' },
+                        to: { table: 'comments', column: 'user_id' },
+                        type: 'one-to-many',
+                        name: 'writes'
+                    }
+                ]
+            };
+        }
+
+        function getEcommerceData() {
+            return {
+                tables: [
+                    {
+                        id: 'customers',
+                        name: 'customers',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'email', type: 'VARCHAR(255)', unique: true },
+                            { name: 'first_name', type: 'VARCHAR(100)' },
+                            { name: 'last_name', type: 'VARCHAR(100)' },
+                            { name: 'phone', type: 'VARCHAR(20)' }
+                        ]
+                    },
+                    {
+                        id: 'products',
+                        name: 'products',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'name', type: 'VARCHAR(200)' },
+                            { name: 'price', type: 'DECIMAL(10,2)' },
+                            { name: 'category_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'stock_quantity', type: 'INTEGER' }
+                        ]
+                    },
+                    {
+                        id: 'categories',
+                        name: 'categories',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'name', type: 'VARCHAR(100)' },
+                            { name: 'description', type: 'TEXT' }
+                        ]
+                    },
+                    {
+                        id: 'orders',
+                        name: 'orders',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'customer_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'order_date', type: 'TIMESTAMP' },
+                            { name: 'total_amount', type: 'DECIMAL(10,2)' },
+                            { name: 'status', type: 'VARCHAR(50)' }
+                        ]
+                    }
+                ],
+                relations: [
+                    {
+                        id: 'categories_products',
+                        from: { table: 'categories', column: 'id' },
+                        to: { table: 'products', column: 'category_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'customers_orders',
+                        from: { table: 'customers', column: 'id' },
+                        to: { table: 'orders', column: 'customer_id' },
+                        type: 'one-to-many'
+                    }
+                ]
+            };
+        }
+
+        function getUniversityData() {
+            return {
+                tables: [
+                    {
+                        id: 'students',
+                        name: 'students',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'student_number', type: 'VARCHAR(20)', unique: true },
+                            { name: 'first_name', type: 'VARCHAR(100)' },
+                            { name: 'last_name', type: 'VARCHAR(100)' },
+                            { name: 'email', type: 'VARCHAR(255)' },
+                            { name: 'enrollment_date', type: 'DATE' }
+                        ]
+                    },
+                    {
+                        id: 'courses',
+                        name: 'courses',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'course_code', type: 'VARCHAR(10)', unique: true },
+                            { name: 'title', type: 'VARCHAR(200)' },
+                            { name: 'credits', type: 'INTEGER' },
+                            { name: 'department_id', type: 'INTEGER', foreignKey: true }
+                        ]
+                    },
+                    {
+                        id: 'departments',
+                        name: 'departments',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'name', type: 'VARCHAR(100)' },
+                            { name: 'head_professor', type: 'VARCHAR(100)' }
+                        ]
+                    },
+                    {
+                        id: 'enrollments',
+                        name: 'enrollments',
+                        columns: [
+                            { name: 'id', type: 'SERIAL', primaryKey: true },
+                            { name: 'student_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'course_id', type: 'INTEGER', foreignKey: true },
+                            { name: 'semester', type: 'VARCHAR(20)' },
+                            { name: 'grade', type: 'VARCHAR(2)' }
+                        ]
+                    }
+                ],
+                relations: [
+                    {
+                        id: 'departments_courses',
+                        from: { table: 'departments', column: 'id' },
+                        to: { table: 'courses', column: 'department_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'students_enrollments',
+                        from: { table: 'students', column: 'id' },
+                        to: { table: 'enrollments', column: 'student_id' },
+                        type: 'one-to-many'
+                    },
+                    {
+                        id: 'courses_enrollments',
+                        from: { table: 'courses', column: 'id' },
+                        to: { table: 'enrollments', column: 'course_id' },
+                        type: 'one-to-many'
+                    }
+                ]
+            };
+        }
+
+        // Demo Functions
+        function loadBlogDemo() {
+            if (!erInstance) return;
+            const data = getBlogData();
+            erInstance.setERData(data);
+            updateStats(data.tables.length, data.relations.length);
+            showMessage('📝 Blog database loaded');
+        }
+
+        function loadEcommerceDemo() {
+            if (!erInstance) return;
+            const data = getEcommerceData();
+            erInstance.setERData(data);
+            updateStats(data.tables.length, data.relations.length);
+            showMessage('🛒 E-commerce database loaded');
+        }
+
+        function loadUniversityDemo() {
+            if (!erInstance) return;
+            const data = getUniversityData();
+            erInstance.setERData(data);
+            updateStats(data.tables.length, data.relations.length);
+            showMessage('🎓 University database loaded');
+        }
+
+        function applyLayout(layoutType) {
+            if (!erInstance) return;
+            erInstance.applyERLayout({ algorithm: layoutType, fit: true });
+            showMessage(`📊 ${layoutType.toUpperCase()} layout applied`);
+        }
+
+        function addSampleTable() {
+            if (!erInstance) return;
+            const newTable = {
+                id: 'sample_' + Date.now(),
+                name: 'sample_table',
+                columns: [
+                    { name: 'id', type: 'SERIAL', primaryKey: true },
+                    { name: 'name', type: 'VARCHAR(100)' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            };
+            erInstance.addTable(newTable);
+            showMessage('➕ Sample table added');
+        }
+
+        function highlightPrimaryKeys() {
+            if (!erInstance) return;
+            const data = erInstance.getERData();
+            const pkTables = data.tables.filter(t => t.columns.some(c => c.primaryKey)).map(t => t.id);
+            erInstance.highlightTables(pkTables);
+            showMessage('🔑 Primary key tables highlighted');
+        }
+
+        function highlightForeignKeys() {
+            if (!erInstance) return;
+            const data = erInstance.getERData();
+            const fkTables = data.tables.filter(t => t.columns.some(c => c.foreignKey)).map(t => t.id);
+            erInstance.highlightTables(fkTables);
+            showMessage('🔗 Foreign key tables highlighted');
+        }
+
+        function clearDiagram() {
+            if (!erInstance) return;
+            erInstance.clear();
+            updateStats(0, 0);
+            showMessage('🗑️ Diagram cleared');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

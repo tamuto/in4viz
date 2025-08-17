@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Path Test</title>
+</head>
+<body>
+    <h1>Path Test</h1>
+    <div id="result"></div>
+    
+    <script type="module">
+        const resultEl = document.getElementById('result');
+        
+        try {
+            resultEl.innerHTML = '<p>🔄 Testing import path...</p>';
+            const module = await import('../packages/core/dist/index.mjs');
+            resultEl.innerHTML = '<p>✅ Success! Module keys: ' + Object.keys(module).join(', ') + '</p>';
+            
+            if (module.In4viz) {
+                resultEl.innerHTML += '<p>✅ In4viz class found!</p>';
+                
+                // Try creating instance
+                const viz = module.In4viz.createERDiagram();
+                resultEl.innerHTML += '<p>✅ ER instance created!</p>';
+            }
+        } catch (error) {
+            resultEl.innerHTML = '<p>❌ Error: ' + error.message + '</p>';
+            console.error('Full error:', error);
+        }
+    </script>
+</body>
+</html>

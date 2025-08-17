@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+</head>
+<body>
+    <h1>Simple Test</h1>
+    <div id="result"></div>
+    <div id="diagram" style="width: 800px; height: 600px; border: 1px solid #ccc;"></div>
+    
+    <!-- CDNからCytoscapeを直接読み込み -->
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+    
+    <script>
+        const resultEl = document.getElementById('result');
+        
+        try {
+            resultEl.innerHTML = '<p>🔄 Testing Cytoscape directly...</p>';
+            
+            // Cytoscapeプラグインを登録
+            cytoscape.use(cytoscapeDagre);
+            
+            // 簡単なER図を作成
+            const cy = cytoscape({
+                container: document.getElementById('diagram'),
+                elements: [
+                    // ノード
+                    { data: { id: 'users', label: 'users\n---\nid: SERIAL (PK)\nemail: VARCHAR(255)\nname: VARCHAR(100)' } },
+                    { data: { id: 'posts', label: 'posts\n---\nid: SERIAL (PK)\nuser_id: INTEGER (FK)\ntitle: VARCHAR(200)\ncontent: TEXT' } },
+                    
+                    // エッジ
+                    { data: { id: 'users-posts', source: 'users', target: 'posts', label: 'one-to-many' } }
+                ],
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'shape': 'rectangle',
+                            'background-color': '#ffffff',
+                            'border-color': '#2196F3',
+                            'border-width': 2,
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': 12,
+                            'font-family': 'Arial, sans-serif',
+                            'color': '#333333',
+                            'width': 200,
+                            'height': 120,
+                            'text-wrap': 'wrap',
+                            'text-max-width': 180,
+                            'padding': 8
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'line-color': '#666666',
+                            'target-arrow-color': '#666666',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'width': 2,
+                            'label': 'data(label)',
+                            'font-size': 10,
+                            'text-rotation': 'autorotate',
+                            'text-background-color': '#ffffff',
+                            'text-background-opacity': 0.8,
+                            'text-background-padding': 3
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'dagre',
+                    rankDir: 'TB',
+                    animate: false,
+                    fit: true,
+                    padding: 20
+                }
+            });
+            
+            resultEl.innerHTML = '<p>✅ Success! Cytoscape ER diagram created directly with CDN!</p>';
+            resultEl.innerHTML += '<p>📊 Nodes: ' + cy.nodes().length + ', Edges: ' + cy.edges().length + '</p>';
+            
+        } catch (error) {
+            resultEl.innerHTML = '<p>❌ Error: ' + error.message + '</p>';
+            console.error('Full error:', error);
+        }
+    </script>
+</body>
+</html>
