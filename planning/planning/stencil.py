@@ -19,9 +19,10 @@ class TableStencil(Stencil):
         self.row_height = 22
         self.header_height = 25
         self.min_logical_width = 40  # 4文字分
+        self.min_marker_width = 6    # NOT NULLマーカー用
         self.min_physical_width = 30  # 3文字分  
         self.min_data_type_width = 45  # 5文字分
-        self.min_constraint_width = 60  # 8文字分（制約文字列対応）
+        self.min_constraint_width = 25  # FK文字分
         self.padding = 10
     
     def _calculate_text_width(self, text: str, is_japanese: bool = True) -> int:
@@ -45,6 +46,7 @@ class TableStencil(Stencil):
         
         # カラム名の幅計算
         max_logical_col_width = self.min_logical_width
+        marker_width = self.min_marker_width
         max_physical_col_width = self.min_physical_width
         max_type_width = self.min_data_type_width
         max_constraint_width = self.min_constraint_width
@@ -54,10 +56,8 @@ class TableStencil(Stencil):
             logical_col_name = column.get('logical_name', physical_col_name)
             column_type = column.get('type', 'VARCHAR')
             
-            # 制約文字列の計算（PKは除外）
+            # 制約文字列の計算（PKとNOT NULLは除外）
             constraints = []
-            if not column.get('nullable', True):
-                constraints.append('NOT NULL')
             if column.get('foreign_key', False):
                 constraints.append('FK')
             constraint_text = ', '.join(constraints) if constraints else ''
@@ -65,15 +65,23 @@ class TableStencil(Stencil):
             max_logical_col_width = max(max_logical_col_width, self._calculate_text_width(logical_col_name, True) + self.padding)
             max_physical_col_width = max(max_physical_col_width, self._calculate_text_width(physical_col_name, False) + self.padding)
             max_type_width = max(max_type_width, self._calculate_text_width(column_type, False) + self.padding)
-            max_constraint_width = max(max_constraint_width, self._calculate_text_width(constraint_text, False) + self.padding)
+            if constraint_text:  # 制約がある場合のみ幅を計算
+                max_constraint_width = max(max_constraint_width, self._calculate_text_width(constraint_text, False) + self.padding)
         
-        column_total_width = max_logical_col_width + max_physical_col_width + max_type_width + max_constraint_width
+        # 制約欄に内容がない場合は幅0
+        if max_constraint_width == self.min_constraint_width:
+            has_constraints = any(column.get('foreign_key', False) for column in columns)
+            if not has_constraints:
+                max_constraint_width = 0
+        
+        column_total_width = marker_width + max_logical_col_width + max_physical_col_width + max_type_width + max_constraint_width
         
         return {
             'table_logical_width': logical_table_width,
             'table_physical_width': physical_table_width,
             'table_total_width': table_total_width,
             'logical_width': max_logical_col_width,
+            'marker_width': marker_width,
             'physical_width': max_physical_col_width,
             'type_width': max_type_width,
             'constraint_width': max_constraint_width,
@@ -128,22 +136,28 @@ class TableStencil(Stencil):
             font_weight = "normal"
             
             constraints = []
-            if not is_nullable:
-                constraints.append('NOT NULL')
             if is_foreign_key:
                 constraints.append('FK')
             constraint_text = ', '.join(constraints) if constraints else ''
             
-            # セル位置計算（カラム部分の独立した幅を使用）
-            logical_col_x = x
-            physical_col_x = x + widths['logical_width']
-            type_col_x = x + widths['logical_width'] + widths['physical_width']
-            constraint_col_x = x + widths['logical_width'] + widths['physical_width'] + widths['type_width']
+            # セル位置計算（マーカーセルを含む）
+            marker_col_x = x
+            logical_col_x = x + widths['marker_width']
+            physical_col_x = x + widths['marker_width'] + widths['logical_width']
+            type_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width']
+            constraint_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width'] + widths['type_width']
             
             # カラムデータ表示
             svg_parts.append(f'<text x="{logical_col_x + 5}" y="{current_y + self.row_height//2 + 3}" '
                             f'font-family="Arial" font-size="10" font-weight="{font_weight}" fill="{text_color}">'
                             f'{logical_col_name}</text>')
+            
+            # NOT NULLマーカー表示（黒い四角）
+            if not is_nullable:
+                marker_x = marker_col_x + 3  # スクエアの左余白3px（右に1pxずらし）
+                marker_y = current_y + self.row_height // 2 - 3  # 中央配置
+                svg_parts.append(f'<rect x="{marker_x}" y="{marker_y}" '
+                                f'width="3" height="6" fill="black"/>')
             
             svg_parts.append(f'<text x="{physical_col_x + 5}" y="{current_y + self.row_height//2 + 3}" '
                             f'font-family="Arial" font-size="10" fill="black">'
@@ -153,9 +167,11 @@ class TableStencil(Stencil):
                             f'font-family="Arial" font-size="9" fill="black">'
                             f'{column_type}</text>')
             
-            svg_parts.append(f'<text x="{constraint_col_x + 5}" y="{current_y + self.row_height//2 + 3}" '
-                            f'font-family="Arial" font-size="9" fill="black">'
-                            f'{constraint_text}</text>')
+            # 制約欄（幅がある場合のみ表示）
+            if widths['constraint_width'] > 0:
+                svg_parts.append(f'<text x="{constraint_col_x + 5}" y="{current_y + self.row_height//2 + 3}" '
+                                f'font-family="Arial" font-size="9" fill="black">'
+                                f'{constraint_text}</text>')
             
             current_y += self.row_height
             
