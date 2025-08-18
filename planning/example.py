@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from planning import ERDiagram, Table, Column, LineType, Cardinality
+from in4viz import ERDiagram, Table, Column, LineType, Cardinality
 
 def main():
     diagram = ERDiagram()
