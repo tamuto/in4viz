@@ -60,6 +60,8 @@ class TableStencil(Stencil):
             constraints = []
             if column.get('foreign_key', False):
                 constraints.append('FK')
+            if column.get('index', False):
+                constraints.append('IDX')
             constraint_text = ', '.join(constraints) if constraints else ''
 
             max_logical_col_width = max(max_logical_col_width, self._calculate_text_width(logical_col_name, True) + self.padding)
@@ -70,7 +72,7 @@ class TableStencil(Stencil):
 
         # 制約欄に内容がない場合は幅0
         if max_constraint_width == self.min_constraint_width:
-            has_constraints = any(column.get('foreign_key', False) for column in columns)
+            has_constraints = any(column.get('foreign_key', False) or column.get('index', False) for column in columns)
             if not has_constraints:
                 max_constraint_width = 0
 
@@ -138,6 +140,8 @@ class TableStencil(Stencil):
             constraints = []
             if is_foreign_key:
                 constraints.append('FK')
+            if column.get('index', False):
+                constraints.append('IDX')
             constraint_text = ', '.join(constraints) if constraints else ''
 
             # セル位置計算（マーカーセルを含む）

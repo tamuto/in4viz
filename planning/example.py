@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from planning import ERDiagram
-from planning.diagram import Table, Column, LineType
+from planning.diagram import Table, Column, LineType, Cardinality
 
 def main():
     diagram = ERDiagram()
@@ -12,8 +12,8 @@ def main():
         logical_name='ユーザー',
         columns=[
             Column('id', 'ユーザーID', 'INT', primary_key=True, nullable=False),
-            Column('username', 'ユーザー名', 'VARCHAR(50)', nullable=False),
-            Column('email', 'メールアドレス', 'VARCHAR(100)', nullable=False),
+            Column('username', 'ユーザー名', 'VARCHAR(50)', nullable=False, index=True),
+            Column('email', 'メールアドレス', 'VARCHAR(100)', nullable=False, index=True),
             Column('created_at', '作成日時', 'TIMESTAMP', nullable=False)
         ]
     )
@@ -25,8 +25,8 @@ def main():
         logical_name='投稿',
         columns=[
             Column('id', '投稿ID', 'INT', primary_key=True, nullable=False),
-            Column('user_id', 'ユーザーID', 'INT', nullable=False, foreign_key=True),
-            Column('title', 'タイトル', 'VARCHAR(200)', nullable=False),
+            Column('user_id', 'ユーザーID', 'INT', nullable=False, foreign_key=True, index=True),
+            Column('title', 'タイトル', 'VARCHAR(200)', nullable=False, index=True),
             Column('content', '本文', 'TEXT', nullable=True),
             Column('published_at', '公開日時', 'TIMESTAMP', nullable=True)
         ]
@@ -68,11 +68,11 @@ def main():
     )
     diagram.add_table(user_types_table)
 
-    # エッジ（関係線）の追加 - 物理テーブル名を使用
-    diagram.add_edge('posts', 'users', LineType.STRAIGHT)  # posts -> users (直線)
-    diagram.add_edge('post_categories', 'posts', LineType.STRAIGHT)  # post_categories -> posts
-    diagram.add_edge('post_categories', 'categories', LineType.STRAIGHT)  # post_categories -> categories
-    diagram.add_edge('user_types', 'users', LineType.STRAIGHT)  # user_types -> users
+    # エッジ（関係線）の追加 - 物理テーブル名を使用（IE記法確認用）
+    diagram.add_edge('posts', 'users', LineType.STRAIGHT, Cardinality('*', '1'))  # posts -> users (多対一)
+    diagram.add_edge('post_categories', 'posts', LineType.STRAIGHT, Cardinality('0...*', '0'))  # post_categories -> posts (ゼロ以上多数対ゼロ)
+    diagram.add_edge('post_categories', 'categories', LineType.STRAIGHT, Cardinality('1', '1...*'))  # post_categories -> categories (一対一以上多数)
+    diagram.add_edge('users', 'user_types', LineType.STRAIGHT, Cardinality('0', '1'))  # users -> user_types (ゼロ対一)
 
     diagram.save_svg('er_diagram_example.svg')
     print("ER図をer_diagram_example.svgに出力しました。")
