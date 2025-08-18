@@ -1,54 +1,78 @@
 #!/usr/bin/env python3
 
 from planning import ERDiagram
+from planning.diagram import Table, Column, LineType
 
 def main():
     diagram = ERDiagram()
 
-    users_columns = [
-        {'name': 'id', 'logical_name': 'ユーザーID', 'type': 'INT', 'primary_key': True, 'nullable': False},
-        {'name': 'username', 'logical_name': 'ユーザー名', 'type': 'VARCHAR(50)', 'primary_key': False, 'nullable': False},
-        {'name': 'email', 'logical_name': 'メールアドレス', 'type': 'VARCHAR(100)', 'primary_key': False, 'nullable': False},
-        {'name': 'created_at', 'logical_name': '作成日時', 'type': 'TIMESTAMP', 'primary_key': False, 'nullable': False}
-    ]
-    diagram.add_table('users', users_columns, logical_name='ユーザー')
+    # ユーザーテーブル
+    users_table = Table(
+        name='users',
+        logical_name='ユーザー',
+        columns=[
+            Column('id', 'ユーザーID', 'INT', primary_key=True, nullable=False),
+            Column('username', 'ユーザー名', 'VARCHAR(50)', nullable=False),
+            Column('email', 'メールアドレス', 'VARCHAR(100)', nullable=False),
+            Column('created_at', '作成日時', 'TIMESTAMP', nullable=False)
+        ]
+    )
+    diagram.add_table(users_table)
 
-    posts_columns = [
-        {'name': 'id', 'logical_name': '投稿ID', 'type': 'INT', 'primary_key': True, 'nullable': False},
-        {'name': 'user_id', 'logical_name': 'ユーザーID', 'type': 'INT', 'primary_key': False, 'nullable': False, 'foreign_key': True},
-        {'name': 'title', 'logical_name': 'タイトル', 'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': False},
-        {'name': 'content', 'logical_name': '本文', 'type': 'TEXT', 'primary_key': False, 'nullable': True},
-        {'name': 'published_at', 'logical_name': '公開日時', 'type': 'TIMESTAMP', 'primary_key': False, 'nullable': True}
-    ]
-    diagram.add_table('posts', posts_columns, logical_name='投稿')
+    # 投稿テーブル
+    posts_table = Table(
+        name='posts',
+        logical_name='投稿',
+        columns=[
+            Column('id', '投稿ID', 'INT', primary_key=True, nullable=False),
+            Column('user_id', 'ユーザーID', 'INT', nullable=False, foreign_key=True),
+            Column('title', 'タイトル', 'VARCHAR(200)', nullable=False),
+            Column('content', '本文', 'TEXT', nullable=True),
+            Column('published_at', '公開日時', 'TIMESTAMP', nullable=True)
+        ]
+    )
+    diagram.add_table(posts_table)
 
-    categories_columns = [
-        {'name': 'id', 'logical_name': 'カテゴリID', 'type': 'INT', 'primary_key': True, 'nullable': False},
-        {'name': 'name', 'logical_name': 'カテゴリ名', 'type': 'VARCHAR(100)', 'primary_key': False, 'nullable': False},
-        {'name': 'description', 'logical_name': '説明', 'type': 'TEXT', 'primary_key': False, 'nullable': True}
-    ]
-    diagram.add_table('categories', categories_columns, logical_name='カテゴリ')
+    # カテゴリテーブル
+    categories_table = Table(
+        name='categories',
+        logical_name='カテゴリ',
+        columns=[
+            Column('id', 'カテゴリID', 'INT', primary_key=True, nullable=False),
+            Column('name', 'カテゴリ名', 'VARCHAR(100)', nullable=False),
+            Column('description', '説明', 'TEXT', nullable=True)
+        ]
+    )
+    diagram.add_table(categories_table)
 
-    post_categories_columns = [
-        {'name': 'post_id', 'logical_name': '投稿ID', 'type': 'INT', 'primary_key': True, 'nullable': False, 'foreign_key': True},
-        {'name': 'category_id', 'logical_name': 'カテゴリID', 'type': 'INT', 'primary_key': True, 'nullable': False, 'foreign_key': True}
-    ]
-    diagram.add_table('post_categories', post_categories_columns, logical_name='投稿カテゴリ')
+    # 投稿カテゴリテーブル
+    post_categories_table = Table(
+        name='post_categories',
+        logical_name='投稿カテゴリ',
+        columns=[
+            Column('post_id', '投稿ID', 'INT', primary_key=True, nullable=False, foreign_key=True),
+            Column('category_id', 'カテゴリID', 'INT', primary_key=True, nullable=False, foreign_key=True)
+        ]
+    )
+    diagram.add_table(post_categories_table)
     
-    # ユーザ種別テーブルを追加
-    user_types_columns = [
-        {'name': 'id', 'logical_name': '種別ID', 'type': 'INT', 'primary_key': True, 'nullable': False},
-        {'name': 'type_name', 'logical_name': '種別名', 'type': 'VARCHAR(50)', 'primary_key': False, 'nullable': False},
-        {'name': 'description', 'logical_name': '説明', 'type': 'TEXT', 'primary_key': False, 'nullable': True}
-    ]
-    diagram.add_table('user_types', user_types_columns, logical_name='ユーザ種別')
+    # ユーザ種別テーブル
+    user_types_table = Table(
+        name='user_types',
+        logical_name='ユーザ種別',
+        columns=[
+            Column('id', '種別ID', 'INT', primary_key=True, nullable=False),
+            Column('type_name', '種別名', 'VARCHAR(50)', nullable=False),
+            Column('description', '説明', 'TEXT', nullable=True)
+        ]
+    )
+    diagram.add_table(user_types_table)
 
-    # エッジ（関係線）の追加 - 異なる線種でテスト
-    from planning.diagram import LineType
-    diagram.add_edge('table_1', 'table_0', LineType.STRAIGHT)  # posts -> users (直線)
-    diagram.add_edge('table_3', 'table_1', LineType.STRAIGHT)  # post_categories -> posts
-    diagram.add_edge('table_3', 'table_2', LineType.STRAIGHT)  # post_categories -> categories
-    diagram.add_edge('table_4', 'table_0', LineType.STRAIGHT)  # user_types -> users
+    # エッジ（関係線）の追加 - 物理テーブル名を使用
+    diagram.add_edge('posts', 'users', LineType.STRAIGHT)  # posts -> users (直線)
+    diagram.add_edge('post_categories', 'posts', LineType.STRAIGHT)  # post_categories -> posts
+    diagram.add_edge('post_categories', 'categories', LineType.STRAIGHT)  # post_categories -> categories
+    diagram.add_edge('user_types', 'users', LineType.STRAIGHT)  # user_types -> users
 
     diagram.save_svg('er_diagram_example.svg')
     print("ER図をer_diagram_example.svgに出力しました。")

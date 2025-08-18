@@ -237,21 +237,49 @@ class Node:
         return self.stencil.render(self.data, self.x, self.y)
 
 
+from dataclasses import dataclass
+
+@dataclass
+class Column:
+    name: str
+    logical_name: str
+    type: str
+    primary_key: bool = False
+    nullable: bool = True
+    foreign_key: bool = False
+
+@dataclass
+class Table:
+    name: str
+    logical_name: str
+    columns: List[Column]
+
 class ERDiagram:
     def __init__(self, default_line_type: LineType = LineType.STRAIGHT):
         self.canvas = Canvas(800, 600, default_line_type)  # 初期値は動的調整で上書きされる
         self.nodes = self.canvas.nodes
 
-    def add_table(self, table_name: str, columns: List[Dict[str, Any]],
-              logical_name: str = None, table_id: str = None, x: int = None, y: int = None) -> str:
-        if table_id is None:
-            table_id = f"table_{len(self.nodes)}"
+    def add_table(self, table: Table, x: int = None, y: int = None) -> str:
+        table_id = table.name  # 物理テーブル名をIDとして使用
 
         stencil = TableStencil()
+        
+        # Column dataclassをdict形式に変換
+        columns_data = []
+        for col in table.columns:
+            columns_data.append({
+                'name': col.name,
+                'logical_name': col.logical_name,
+                'type': col.type,
+                'primary_key': col.primary_key,
+                'nullable': col.nullable,
+                'foreign_key': col.foreign_key
+            })
+        
         data = {
-            'table_name': table_name,
-            'logical_name': logical_name,
-            'columns': columns
+            'table_name': table.name,
+            'logical_name': table.logical_name,
+            'columns': columns_data
         }
 
         # 幅を事前計算
@@ -502,7 +530,18 @@ class ERDiagram:
 
         return '\n'.join(svg_parts)
 
-    def save_svg(self, filename: str):
+    def save_svg(self, output):
+        """SVGを出力する
+        
+        Args:
+            output: ファイルパス(str)またはファイルライクオブジェクト
+        """
         svg_content = self.render_svg()
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(svg_content)
+        
+        if isinstance(output, str):
+            # ファイルパスの場合
+            with open(output, 'w', encoding='utf-8') as f:
+                f.write(svg_content)
+        else:
+            # ストリームオブジェクトの場合
+            output.write(svg_content)
