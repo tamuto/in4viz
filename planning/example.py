@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from planning import ERDiagram
-from planning.diagram import Table, Column, LineType, Cardinality
+from planning import ERDiagram, Table, Column, LineType, Cardinality
 
 def main():
     diagram = ERDiagram()
@@ -55,7 +54,7 @@ def main():
         ]
     )
     diagram.add_table(post_categories_table)
-    
+
     # ユーザ種別テーブル
     user_types_table = Table(
         name='user_types',
