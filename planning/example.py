@@ -3,7 +3,7 @@
 from planning import ERDiagram
 
 def main():
-    diagram = ERDiagram(canvas_width=1200, canvas_height=600)
+    diagram = ERDiagram()
 
     users_columns = [
         {'name': 'id', 'logical_name': 'ユーザーID', 'type': 'INT', 'primary_key': True, 'nullable': False},

@@ -238,16 +238,12 @@ class Node:
 
 
 class ERDiagram:
-    def __init__(self, canvas_width: int = 1200, canvas_height: int = 800, default_line_type: LineType = LineType.STRAIGHT):
-        self.canvas = Canvas(canvas_width, canvas_height, default_line_type)
-
-        # 後方互換性のためのプロパティ
-        self.canvas_width = canvas_width
-        self.canvas_height = canvas_height
+    def __init__(self, default_line_type: LineType = LineType.STRAIGHT):
+        self.canvas = Canvas(800, 600, default_line_type)  # 初期値は動的調整で上書きされる
         self.nodes = self.canvas.nodes
 
     def add_table(self, table_name: str, columns: List[Dict[str, Any]],
-                  logical_name: str = None, table_id: str = None, x: int = None, y: int = None) -> str:
+              logical_name: str = None, table_id: str = None, x: int = None, y: int = None) -> str:
         if table_id is None:
             table_id = f"table_{len(self.nodes)}"
 
@@ -266,7 +262,7 @@ class ERDiagram:
         if auto_positioned:
             x, y = self._get_next_position()
             # 幅チェックして改行判定
-            if x + node_width > self.canvas_width - 50:
+            if x + node_width > self.canvas.width - 50:
                 x = 50
                 y += self.canvas.row_height
                 self.canvas.next_position = [x, y]
@@ -288,7 +284,7 @@ class ERDiagram:
         x, y = self.canvas.next_position
 
         # 前回のノードの幅を考慮
-        if self.nodes and x + 400 > self.canvas_width - 50:  # 仮の幅でチェック
+        if self.nodes and x + 400 > self.canvas.width - 50:  # 仮の幅でチェック
             x = 50
             y += self.canvas.row_height
 
@@ -480,13 +476,11 @@ class ERDiagram:
         """キャンバスサイズを更新"""
         self.canvas.width = width
         self.canvas.height = height
-        self.canvas_width = width
-        self.canvas_height = height
 
     def render_svg(self) -> str:
         svg_parts = []
 
-        svg_parts.append(f'<svg width="{self.canvas_width}" height="{self.canvas_height}" '
+        svg_parts.append(f'<svg width="{self.canvas.width}" height="{self.canvas.height}" '
                         f'xmlns="http://www.w3.org/2000/svg">')
 
 
@@ -494,7 +488,7 @@ class ERDiagram:
         svg_parts.append('text { font-family: Arial, sans-serif; }')
         svg_parts.append('</style>')
 
-        svg_parts.append(f'<rect width="{self.canvas_width}" height="{self.canvas_height}" '
+        svg_parts.append(f'<rect width="{self.canvas.width}" height="{self.canvas.height}" '
                         f'fill="#f8f9fa" stroke="none"/>')
 
         for node in self.nodes:
