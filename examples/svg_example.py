@@ -106,7 +106,7 @@ def main():
     )
 
     # SVGファイルとして保存
-    output_path = Path(__file__).parent / 'blog_system.svg'
+    output_path = Path(__file__).parent / 'svg_example.svg'
     diagram.save_svg(str(output_path))
 
     print(f"✓ SVG diagram saved to: {output_path}")

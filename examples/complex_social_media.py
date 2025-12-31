@@ -172,7 +172,7 @@ def main():
     diagram.add_edge('notifications', 'posts', cardinality=Cardinality('*', '0..1'))
 
     # 保存
-    output_path = Path(__file__).parent / 'social_media_system.svg'
+    output_path = Path(__file__).parent / 'complex_social_media.svg'
     diagram.save(str(output_path))
     print(f"SVG saved: {output_path}")
 
@@ -199,7 +199,7 @@ def main():
     diagram_drawio.add_edge('notifications', 'users', cardinality=Cardinality('*', '1'))
     diagram_drawio.add_edge('notifications', 'posts', cardinality=Cardinality('*', '0..1'))
 
-    output_drawio = Path(__file__).parent / 'social_media_system.drawio'
+    output_drawio = Path(__file__).parent / 'complex_social_media.drawio'
     diagram_drawio.save(str(output_drawio))
     print(f"draw.io saved: {output_drawio}")
 

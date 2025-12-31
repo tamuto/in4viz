@@ -99,7 +99,7 @@ def main():
     )
 
     # draw.ioファイルとして保存
-    output_path = Path(__file__).parent / 'order_system.drawio'
+    output_path = Path(__file__).parent / 'drawio_example.drawio'
     diagram.save_drawio(str(output_path))
 
     print(f"✓ draw.io diagram saved to: {output_path}")

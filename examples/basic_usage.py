@@ -99,7 +99,7 @@ def create_svg_diagram():
     )
 
     # SVGファイルとして保存
-    output_path = Path(__file__).parent / 'er_diagram_example.svg'
+    output_path = Path(__file__).parent / 'basic_usage.svg'
     diagram.save(str(output_path))
     print(f"SVG diagram saved to: {output_path}")
 
@@ -135,7 +135,7 @@ def create_drawio_diagram():
     )
 
     # draw.ioファイルとして保存
-    output_path = Path(__file__).parent / 'er_diagram_example.drawio'
+    output_path = Path(__file__).parent / 'basic_usage.drawio'
     diagram.save(str(output_path))
     print(f"draw.io diagram saved to: {output_path}")
 
@@ -155,8 +155,8 @@ def main():
 
     print("=" * 50)
     print("Done! Both diagrams have been created successfully.")
-    print("- er_diagram_example.svg (can be opened in any browser)")
-    print("- er_diagram_example.drawio (can be opened in draw.io)")
+    print("- basic_usage.svg (can be opened in any browser)")
+    print("- basic_usage.drawio (can be opened in draw.io)")
 
 
 if __name__ == '__main__':

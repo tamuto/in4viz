@@ -214,7 +214,7 @@ def main():
     diagram.add_edge('cart_items', 'product_variants', cardinality=Cardinality('*', '0..1'))
 
     # 保存
-    output_path = Path(__file__).parent / 'ecommerce_system.svg'
+    output_path = Path(__file__).parent / 'complex_ecommerce.svg'
     diagram.save(str(output_path))
     print(f"SVG saved: {output_path}")
 
@@ -246,7 +246,7 @@ def main():
     diagram_drawio.add_edge('cart_items', 'products', cardinality=Cardinality('*', '1'))
     diagram_drawio.add_edge('cart_items', 'product_variants', cardinality=Cardinality('*', '0..1'))
 
-    output_drawio = Path(__file__).parent / 'ecommerce_system.drawio'
+    output_drawio = Path(__file__).parent / 'complex_ecommerce.drawio'
     diagram_drawio.save(str(output_drawio))
     print(f"draw.io saved: {output_drawio}")
 

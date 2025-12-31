@@ -9,7 +9,7 @@ from .core.models import Table, Column, LineType, Cardinality
 from .backends.svg import SVGERDiagram
 from .backends.drawio import DrawioERDiagram
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 __all__ = [
     'ERDiagram',

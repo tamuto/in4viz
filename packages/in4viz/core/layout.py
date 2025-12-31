@@ -66,6 +66,10 @@ class LayoutEngine:
                 degree[edge.from_node_id] += 1
                 degree[edge.to_node_id] += 1
 
+        # 接続されたノードと孤立ノードを分離
+        connected_nodes = [node for node in nodes if degree.get(node.node_id, 0) > 0]
+        isolated_nodes = [node for node in nodes if degree.get(node.node_id, 0) == 0]
+
         # ノードサイズの平均
         avg_width = sum(node.width for node in nodes) / n
         avg_height = sum(node.height for node in nodes) / n
@@ -73,15 +77,31 @@ class LayoutEngine:
         # 理想的なエッジ長（接続ノード間の距離）
         ideal_length = max(avg_width, avg_height) * 1.8
 
-        # 初期配置: 接続の多いノードを中心に配置
-        positions = LayoutEngine._initial_placement(
-            nodes, neighbors, degree, ideal_length, margin
-        )
+        # 接続されたノードのみで初期配置とシミュレーション
+        if connected_nodes:
+            connected_node_map = {node.node_id: node for node in connected_nodes}
 
-        # Force-directed simulation
-        positions = LayoutEngine._force_directed_simulation(
-            positions, node_map, edges, neighbors, ideal_length, iterations
-        )
+            # 初期配置: 接続の多いノードを中心に配置（接続ノードのみ）
+            positions = LayoutEngine._initial_placement(
+                connected_nodes, neighbors, degree, ideal_length, margin
+            )
+
+            # Force-directed simulation（接続ノードのみ）
+            positions = LayoutEngine._force_directed_simulation(
+                positions, connected_node_map, edges, neighbors, ideal_length, iterations
+            )
+
+            # 重なり解消（接続ノードのみ）
+            positions = LayoutEngine._resolve_overlaps(positions, connected_node_map, 30)
+
+            # 孤立ノードをシミュレーション後に配置
+            if isolated_nodes:
+                positions = LayoutEngine._place_isolated_nodes(
+                    positions, isolated_nodes, ideal_length
+                )
+        else:
+            # 全ノードが孤立している場合はグリッド配置
+            positions = LayoutEngine._grid_placement(nodes, ideal_length, margin)
 
         # 重なり解消
         positions = LayoutEngine._resolve_overlaps(positions, node_map, 30)
@@ -112,17 +132,25 @@ class LayoutEngine:
         margin: int
     ) -> Dict[str, List[float]]:
         """接続構造に基づく初期配置"""
-        n = len(nodes)
         positions: Dict[str, List[float]] = {}
 
-        # 次数でソート（多いものから配置）
-        sorted_nodes = sorted(nodes, key=lambda x: -degree.get(x.node_id, 0))
+        # 接続されたノードと孤立ノードを分離
+        connected_nodes = [n for n in nodes if degree.get(n.node_id, 0) > 0]
+        isolated_nodes = [n for n in nodes if degree.get(n.node_id, 0) == 0]
+
+        # 接続されたノードがない場合は、全ノードをグリッド配置
+        if not connected_nodes:
+            return LayoutEngine._grid_placement(nodes, ideal_length, margin)
+
+        # 接続されたノードを次数でソート（多いものから配置）
+        sorted_connected = sorted(connected_nodes, key=lambda x: -degree.get(x.node_id, 0))
+        n_connected = len(sorted_connected)
 
         # 最初のノード（最も接続の多いノード）を中心に
-        center = ideal_length * math.sqrt(n) / 2 + margin
+        center = ideal_length * math.sqrt(n_connected) / 2 + margin
 
         placed: Set[str] = set()
-        for i, node in enumerate(sorted_nodes):
+        for i, node in enumerate(sorted_connected):
             if i == 0:
                 # 中心に配置
                 positions[node.node_id] = [center, center]
@@ -140,20 +168,75 @@ class LayoutEngine:
                     avg_y = sum(p[1] for p in neighbor_positions) / len(neighbor_positions)
 
                     # 重心から少しずらした位置に配置
-                    angle = 2 * math.pi * i / n
+                    angle = 2 * math.pi * i / n_connected
                     positions[node.node_id] = [
                         avg_x + ideal_length * 0.8 * math.cos(angle),
                         avg_y + ideal_length * 0.8 * math.sin(angle)
                     ]
                 else:
                     # 隣接ノードが未配置なら、中心の周りに配置
-                    angle = 2 * math.pi * i / n
-                    radius = ideal_length * (1 + i / n)
+                    angle = 2 * math.pi * i / n_connected
+                    radius = ideal_length * (1 + i / n_connected)
                     positions[node.node_id] = [
                         center + radius * math.cos(angle),
                         center + radius * math.sin(angle)
                     ]
                 placed.add(node.node_id)
+
+        # 孤立ノードを接続グループの端に配置
+        if isolated_nodes:
+            positions = LayoutEngine._place_isolated_nodes(
+                positions, isolated_nodes, ideal_length
+            )
+
+        return positions
+
+    @staticmethod
+    def _grid_placement(
+        nodes: List[LayoutNode],
+        ideal_length: float,
+        margin: int
+    ) -> Dict[str, List[float]]:
+        """全ノードが孤立している場合のグリッド配置"""
+        positions: Dict[str, List[float]] = {}
+        n = len(nodes)
+        cols = max(1, int(math.sqrt(n)))
+
+        for i, node in enumerate(nodes):
+            row = i // cols
+            col = i % cols
+            positions[node.node_id] = [
+                margin + col * ideal_length * 1.5,
+                margin + row * ideal_length * 1.5
+            ]
+
+        return positions
+
+    @staticmethod
+    def _place_isolated_nodes(
+        positions: Dict[str, List[float]],
+        isolated_nodes: List[LayoutNode],
+        ideal_length: float
+    ) -> Dict[str, List[float]]:
+        """孤立ノードを接続グループの端に配置"""
+        if not positions:
+            return positions
+
+        # 接続グループの境界を計算
+        min_x = min(p[0] for p in positions.values())
+        max_x = max(p[0] for p in positions.values())
+        min_y = min(p[1] for p in positions.values())
+        max_y = max(p[1] for p in positions.values())
+
+        # 孤立ノードをグループの右側に縦に並べる
+        start_x = max_x + ideal_length * 1.2
+        start_y = min_y
+
+        for i, node in enumerate(isolated_nodes):
+            positions[node.node_id] = [
+                start_x,
+                start_y + i * ideal_length * 0.8
+            ]
 
         return positions
 
