@@ -2,14 +2,14 @@
 
 このサンプルを実行するには:
     cd /kira/in4viz.feature-reset
-    PYTHONPATH=packages:$PYTHONPATH python3 examples/svg_example.py
+    python3 examples/svg_example.py
 """
 
 import sys
 from pathlib import Path
 
 # パッケージへのパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent / 'packages'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'packages' / 'in4viz' / 'src'))
 
 from in4viz.backends.svg import SVGERDiagram
 from in4viz import Table, Column, LineType, Cardinality

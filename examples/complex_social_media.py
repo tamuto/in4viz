@@ -5,15 +5,17 @@
 
 このサンプルを実行するには:
     cd /kira/in4viz.feature-reset
-    PYTHONPATH=packages:$PYTHONPATH python3 examples/complex_social_media.py
+    python3 examples/complex_social_media.py
 """
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / 'packages'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'packages' / 'in4viz' / 'src'))
 
-from in4viz import ERDiagram, Table, Column, LineType, Cardinality
+from in4viz import Table, Column, LineType, Cardinality
+from in4viz.backends.svg import SVGERDiagram
+from in4viz.backends.drawio import DrawioERDiagram
 
 
 def create_social_media_tables():
@@ -132,7 +134,7 @@ def main():
     print("(12 tables with self-references and many-to-many relationships)")
     print()
 
-    diagram = ERDiagram(backend='svg', default_line_type=LineType.CRANK)
+    diagram = SVGERDiagram(default_line_type=LineType.CRANK)
 
     tables = create_social_media_tables()
     (users, follows, posts, post_media, likes, bookmarks,
@@ -173,11 +175,11 @@ def main():
 
     # 保存
     output_path = Path(__file__).parent / 'complex_social_media.svg'
-    diagram.save(str(output_path))
+    diagram.save_svg(str(output_path))
     print(f"SVG saved: {output_path}")
 
     # draw.io形式でも出力
-    diagram_drawio = ERDiagram(backend='drawio', default_line_type=LineType.STRAIGHT)
+    diagram_drawio = DrawioERDiagram(default_line_type=LineType.STRAIGHT)
 
     for table in tables:
         diagram_drawio.add_table(table)
@@ -200,7 +202,7 @@ def main():
     diagram_drawio.add_edge('notifications', 'posts', cardinality=Cardinality('*', '0..1'))
 
     output_drawio = Path(__file__).parent / 'complex_social_media.drawio'
-    diagram_drawio.save(str(output_drawio))
+    diagram_drawio.save_drawio(str(output_drawio))
     print(f"draw.io saved: {output_drawio}")
 
     print()
