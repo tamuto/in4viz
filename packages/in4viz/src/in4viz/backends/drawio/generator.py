@@ -75,6 +75,39 @@ class DrawioGenerator:
                 cell.set(key, str(value))
 
     @staticmethod
+    def create_group_cell(cell_id: str, x: int, y: int, width: int, height: int,
+                          parent: str = '1') -> Dict[str, Any]:
+        """
+        グループセルを生成（複数要素をまとめる親コンテナ）
+
+        Args:
+            cell_id: セルID
+            x, y: 位置
+            width, height: サイズ
+            parent: 親セルID
+
+        Returns:
+            mxCellデータ辞書
+        """
+        style = 'group;'
+
+        return {
+            'id': cell_id,
+            'value': '',
+            'style': style,
+            'vertex': '1',
+            'connectable': '0',
+            'parent': parent,
+            'geometry': {
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+                'as': 'geometry'
+            }
+        }
+
+    @staticmethod
     def create_table_rect(cell_id: str, x: int, y: int, width: int, height: int,
                           bgcolor: str = '#ffffff', use_gradient: bool = False,
                           parent: str = '1') -> Dict[str, Any]:
@@ -290,6 +323,7 @@ class DrawioGenerator:
             'value': '',
             'style': style,
             'vertex': '1',
+            'connectable': '0',
             'parent': parent,
             'geometry': {
                 'x': x,

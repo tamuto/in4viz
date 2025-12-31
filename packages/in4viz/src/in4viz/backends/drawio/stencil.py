@@ -93,7 +93,7 @@ class DrawioTableStencil:
 
     def render_mxcells(self, data: Dict[str, Any], x: int, y: int, canvas) -> Tuple[List[Dict[str, Any]], str]:
         """
-        draw.io用のmxCellリストを生成（SVGと同一レイアウト）
+        draw.io用のmxCellリストを生成（SVGと同一レイアウト、グループ化対応）
 
         Args:
             data: テーブルデータ
@@ -101,7 +101,7 @@ class DrawioTableStencil:
             canvas: DrawioCanvasインスタンス（セルID生成用）
 
         Returns:
-            (mxCellデータのリスト, テーブルセルID)
+            (mxCellデータのリスト, グループセルID)
         """
         cells = []
         physical_name = data.get('table_name', 'Table')
@@ -123,16 +123,29 @@ class DrawioTableStencil:
         # テーブル名表示（論理名 (物理名) 形式）
         table_display = f'{logical_name} ({physical_name})' if logical_name != physical_name else logical_name
 
+        # 0. グループセルを作成（全要素の親）
+        group_id = canvas.get_next_cell_id()
+        group_cell = DrawioGenerator.create_group_cell(
+            cell_id=group_id,
+            x=x,
+            y=y,
+            width=width,
+            height=height
+        )
+        cells.append(group_cell)
+
+        # 以降の要素はグループ内の相対座標を使用
         # 1. テーブル外枠の矩形を作成
         table_rect_id = canvas.get_next_cell_id()
         table_rect = DrawioGenerator.create_table_rect(
             cell_id=table_rect_id,
-            x=x,
-            y=y,
+            x=0,
+            y=0,
             width=width,
             height=height,
             bgcolor=bgcolor,
-            use_gradient=use_gradient
+            use_gradient=use_gradient,
+            parent=group_id
         )
         cells.append(table_rect)
 
@@ -140,12 +153,13 @@ class DrawioTableStencil:
         header_rect_id = canvas.get_next_cell_id()
         header_rect = DrawioGenerator.create_header_rect(
             cell_id=header_rect_id,
-            x=x,
-            y=y,
+            x=0,
+            y=0,
             width=width,
             height=self.header_height,
             bgcolor=bgcolor,
-            use_gradient=use_gradient
+            use_gradient=use_gradient,
+            parent=group_id
         )
         cells.append(header_rect)
 
@@ -154,18 +168,19 @@ class DrawioTableStencil:
         header_text = DrawioGenerator.create_text_cell(
             cell_id=header_text_id,
             value=table_display,
-            x=x + 5,
-            y=y,
+            x=5,
+            y=0,
             width=width - 10,
             height=self.header_height,
             font_size=12,
             font_weight='bold',
-            align='left'
+            align='left',
+            parent=group_id
         )
         cells.append(header_text)
 
         # 4. カラム行を作成
-        current_y = y + self.header_height
+        current_y = self.header_height
         pk_end_y = None
 
         for i, column in enumerate(sorted_columns):
@@ -184,12 +199,12 @@ class DrawioTableStencil:
                 constraints.append('IDX')
             constraint_text = ', '.join(constraints) if constraints else ''
 
-            # セル位置計算（SVGと同じロジック）
-            marker_col_x = x
-            logical_col_x = x + widths['marker_width']
-            physical_col_x = x + widths['marker_width'] + widths['logical_width']
-            type_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width']
-            constraint_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width'] + widths['type_width']
+            # セル位置計算（グループ内の相対座標）
+            marker_col_x = 0
+            logical_col_x = widths['marker_width']
+            physical_col_x = widths['marker_width'] + widths['logical_width']
+            type_col_x = widths['marker_width'] + widths['logical_width'] + widths['physical_width']
+            constraint_col_x = widths['marker_width'] + widths['logical_width'] + widths['physical_width'] + widths['type_width']
 
             # NOT NULLマーカー表示
             if not is_nullable:
@@ -201,7 +216,8 @@ class DrawioTableStencil:
                     x=marker_x,
                     y=marker_y,
                     width=3,
-                    height=6
+                    height=6,
+                    parent=group_id
                 )
                 cells.append(marker_cell)
 
@@ -216,7 +232,8 @@ class DrawioTableStencil:
                 height=self.row_height,
                 font_size=10,
                 font_weight='normal',
-                align='left'
+                align='left',
+                parent=group_id
             )
             cells.append(logical_text)
 
@@ -231,7 +248,8 @@ class DrawioTableStencil:
                 height=self.row_height,
                 font_size=10,
                 font_weight='normal',
-                align='left'
+                align='left',
+                parent=group_id
             )
             cells.append(physical_text)
 
@@ -246,7 +264,8 @@ class DrawioTableStencil:
                 height=self.row_height,
                 font_size=9,
                 font_weight='normal',
-                align='left'
+                align='left',
+                parent=group_id
             )
             cells.append(type_text)
 
@@ -262,7 +281,8 @@ class DrawioTableStencil:
                     height=self.row_height,
                     font_size=9,
                     font_weight='normal',
-                    align='left'
+                    align='left',
+                    parent=group_id
                 )
                 cells.append(constraint_cell)
 
@@ -271,17 +291,18 @@ class DrawioTableStencil:
             if is_primary:
                 pk_end_y = current_y
 
-        # 5. PK区切り線を作成（PKカラムがある場合）
+        # 5. PK区切り線を作成（PKカラムがある場合）- テーブル幅全体に
         if pk_columns and pk_end_y and regular_columns:
             pk_line_id = canvas.get_next_cell_id()
             pk_line = DrawioGenerator.create_horizontal_line(
                 cell_id=pk_line_id,
-                x=x,
+                x=0,
                 y=pk_end_y,
-                width=widths['column_total_width'],
-                stroke_width=1
+                width=width,  # total_widthを使用
+                stroke_width=1,
+                parent=group_id
             )
             cells.append(pk_line)
 
-        # table_rect_id を返す（エッジ接続用）
-        return cells, table_rect_id
+        # グループセルIDを返す（エッジ接続用）
+        return cells, group_id

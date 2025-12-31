@@ -189,7 +189,7 @@ class TableStencil(Stencil):
                 pk_end_y = current_y
 
         if pk_columns and pk_end_y:
-            svg_parts.append(f'<line x1="{x}" y1="{pk_end_y}" x2="{x + widths["column_total_width"]}" y2="{pk_end_y}" '
+            svg_parts.append(f'<line x1="{x}" y1="{pk_end_y}" x2="{x + widths["total_width"]}" y2="{pk_end_y}" '
                             f'stroke="black" stroke-width="1"/>')
 
         # PKのみのテーブルの場合、空行を追加
