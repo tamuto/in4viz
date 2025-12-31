@@ -117,27 +117,21 @@ class DrawioERDiagram:
         self._optimize_layout_for_edges()
 
     def _optimize_layout_for_edges(self):
-        """エッジを考慮した上から下、左から右のレイアウト最適化"""
+        """Force-directedアルゴリズムでレイアウト最適化"""
         if not self.canvas.edges:
             # エッジがない場合でもキャンバスサイズを調整
             self._adjust_canvas_size_for_current_layout()
             return
 
-        # LayoutEngineを使用して階層を構築
-        hierarchy = LayoutEngine.build_hierarchy(self.nodes, self.canvas.edges)
-        fk_pairs = LayoutEngine.get_fk_relationships(self.canvas.edges)
-
-        # 階層に基づいて再配置
-        new_width, new_height = LayoutEngine.arrange_by_hierarchy(
-            self.nodes, hierarchy, fk_pairs
-        )
+        # Force-directedレイアウトを実行
+        new_width, new_height = LayoutEngine.layout(self.nodes, self.canvas.edges)
 
         # キャンバスサイズを更新
         self._update_canvas_size(new_width, new_height)
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""
-        new_width, new_height = LayoutEngine.adjust_canvas_size_for_current_layout(self.nodes)
+        new_width, new_height = LayoutEngine.adjust_canvas_size(self.nodes)
         self._update_canvas_size(new_width, new_height)
 
     def _update_canvas_size(self, width: int, height: int):

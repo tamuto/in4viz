@@ -1,5 +1,11 @@
-"""レイアウトアルゴリズムの共通実装"""
-from typing import List, Dict, Tuple, Protocol
+"""Force-directedレイアウトアルゴリズム
+
+ノード間の斥力とエッジの引力をシミュレートして
+自然で美しいレイアウトを生成する
+"""
+from typing import List, Dict, Tuple, Protocol, Set
+from collections import defaultdict
+import math
 
 
 class LayoutNode(Protocol):
@@ -18,199 +24,294 @@ class LayoutEdge(Protocol):
 
 
 class LayoutEngine:
-    """レイアウトエンジン - バックエンド非依存のレイアウトアルゴリズム"""
+    """
+    Force-directedレイアウトエンジン
+
+    接続されたノードを近くに配置し、
+    重なりを解消して見やすいレイアウトを生成する
+    """
 
     @staticmethod
-    def build_hierarchy(nodes: List[LayoutNode], edges: List[LayoutEdge]) -> Dict[int, List[str]]:
-        """
-        エッジの関係から階層構造を構築（FK関係では参照元を参照先の近くに配置）
-
-        Args:
-            nodes: レイアウト対象のノードリスト
-            edges: エッジリスト
-
-        Returns:
-            階層ごとのノードIDリスト
-        """
-        # 各ノードの出次数を計算（逆方向）
-        out_degree = {node.node_id: 0 for node in nodes}
-        for edge in edges:
-            out_degree[edge.from_node_id] += 1
-
-        # 逆トポロジカルソートで階層を決定
-        hierarchy = {}
-        remaining_nodes = set(node.node_id for node in nodes)
-        level = 0
-
-        while remaining_nodes:
-            # 出次数0のノード（最終参照先）を現在のレベルに配置
-            current_level = []
-            for node_id in list(remaining_nodes):
-                if out_degree[node_id] == 0:
-                    current_level.append(node_id)
-                    remaining_nodes.remove(node_id)
-
-            if not current_level:
-                # 循環参照がある場合、残りのノードを次のレベルに
-                current_level = list(remaining_nodes)
-                remaining_nodes.clear()
-
-            hierarchy[level] = current_level
-            level += 1
-
-            # 現在のレベルのノードを参照するノードの出次数を減らす
-            for node_id in current_level:
-                for edge in edges:
-                    if edge.to_node_id == node_id and edge.from_node_id in remaining_nodes:
-                        out_degree[edge.from_node_id] -= 1
-
-        return hierarchy
-
-    @staticmethod
-    def get_fk_relationships(edges: List[LayoutEdge]) -> List[Tuple[str, str]]:
-        """
-        FK関係のペアを取得
-
-        Args:
-            edges: エッジリスト
-
-        Returns:
-            (from_node_id, to_node_id) のタプルリスト
-        """
-        fk_pairs = []
-        for edge in edges:
-            fk_pairs.append((edge.from_node_id, edge.to_node_id))
-        return fk_pairs
-
-    @staticmethod
-    def arrange_by_hierarchy(
+    def layout(
         nodes: List[LayoutNode],
-        hierarchy: Dict[int, List[str]],
-        fk_pairs: List[Tuple[str, str]],
-        margin_x: int = 50,
-        margin_y: int = 50,
-        level_width: int = 350
-    ) -> Tuple[int, int]:
-        """
-        階層に基づいてノードを再配置（FK関係のあるノードを隣接配置）
-
-        Args:
-            nodes: レイアウト対象のノードリスト
-            hierarchy: 階層構造
-            fk_pairs: FK関係のペア
-            margin_x: 横マージン
-            margin_y: 縦マージン
-            level_width: レベル間の横間隔
-
-        Returns:
-            (max_width, max_height) - 必要なキャンバスサイズ
-        """
-        # ノードIDからノードを取得するための辞書を作成
-        node_map = {node.node_id: node for node in nodes}
-
-        max_width = 0
-        max_height = 0
-
-        # 配置済みノードを追跡
-        placed_nodes = set()
-
-        # 全体でのY座標を管理
-        global_y = margin_y
-
-        for level, node_ids in hierarchy.items():
-            x = margin_x + level * level_width
-
-            for node_id in node_ids:
-                if node_id in placed_nodes:
-                    continue
-
-                node = node_map.get(node_id)
-                if node:
-                    # 基本配置
-                    node.x = x
-                    node.y = global_y
-                    placed_nodes.add(node_id)
-
-                    # FK関係の相手ノードを隣接配置
-                    current_max_height = node.height  # 現在行の最大高さを追跡
-                    adjacent_count = 0  # 隣接配置したノード数
-
-                    for from_node, to_node in fk_pairs:
-                        adjacent_node_id = None
-                        if from_node == node_id:
-                            adjacent_node_id = to_node
-                        elif to_node == node_id:
-                            adjacent_node_id = from_node
-
-                        if adjacent_node_id and adjacent_node_id not in placed_nodes:
-                            adjacent_node = node_map.get(adjacent_node_id)
-                            if adjacent_node:
-                                if adjacent_count == 0:
-                                    # 最初の隣接ノードは右隣に配置
-                                    adjacent_x = x + node.width + 50
-                                    adjacent_y = global_y
-                                    current_max_height = max(current_max_height, adjacent_node.height)
-                                else:
-                                    # 2つ目以降は下に配置
-                                    adjacent_x = x
-                                    adjacent_y = global_y + current_max_height + margin_y
-                                    # global_yを更新して次のノードが重ならないようにする
-                                    global_y = adjacent_y
-                                    current_max_height = adjacent_node.height
-
-                                adjacent_node.x = adjacent_x
-                                adjacent_node.y = adjacent_y
-                                placed_nodes.add(adjacent_node_id)
-                                adjacent_count += 1
-
-                                # 隣接ノードのサイズも考慮
-                                adj_right = adjacent_node.x + adjacent_node.width
-                                adj_bottom = adjacent_node.y + adjacent_node.height
-                                max_width = max(max_width, adj_right)
-                                max_height = max(max_height, adj_bottom)
-
-                    # 現在行の最大高さ分だけY座標を進める
-                    global_y += current_max_height + margin_y
-
-                    # 各ノードの右下座標を計算
-                    node_right = node.x + node.width
-                    node_bottom = node.y + node.height
-                    max_width = max(max_width, node_right)
-                    max_height = max(max_height, node_bottom)
-
-        # キャンバスサイズを決定（マージンを追加）
-        new_width = max_width + margin_x
-        new_height = max_height + margin_y
-
-        return new_width, new_height
-
-    @staticmethod
-    def adjust_canvas_size_for_current_layout(
-        nodes: List[LayoutNode],
+        edges: List[LayoutEdge],
+        iterations: int = 200,
         margin: int = 50
     ) -> Tuple[int, int]:
         """
-        現在のレイアウトに基づいてキャンバスサイズを計算
+        Force-directedアルゴリズムでノードを配置
 
         Args:
-            nodes: レイアウト済みのノードリスト
-            margin: マージン
+            nodes: レイアウト対象のノードリスト
+            edges: エッジリスト
+            iterations: シミュレーション反復回数
+            margin: キャンバス端のマージン
 
         Returns:
-            (width, height) - 必要なキャンバスサイズ
+            (canvas_width, canvas_height)
         """
         if not nodes:
-            return 800, 600  # デフォルトサイズ
+            return 800, 600
+
+        n = len(nodes)
+        node_map = {node.node_id: node for node in nodes}
+
+        # 接続情報を構築
+        neighbors = defaultdict(set)
+        degree = defaultdict(int)
+        for edge in edges:
+            if edge.from_node_id in node_map and edge.to_node_id in node_map:
+                neighbors[edge.from_node_id].add(edge.to_node_id)
+                neighbors[edge.to_node_id].add(edge.from_node_id)
+                degree[edge.from_node_id] += 1
+                degree[edge.to_node_id] += 1
+
+        # ノードサイズの平均
+        avg_width = sum(node.width for node in nodes) / n
+        avg_height = sum(node.height for node in nodes) / n
+
+        # 理想的なエッジ長（接続ノード間の距離）
+        ideal_length = max(avg_width, avg_height) * 1.8
+
+        # 初期配置: 接続の多いノードを中心に配置
+        positions = LayoutEngine._initial_placement(
+            nodes, neighbors, degree, ideal_length, margin
+        )
+
+        # Force-directed simulation
+        positions = LayoutEngine._force_directed_simulation(
+            positions, node_map, edges, neighbors, ideal_length, iterations
+        )
+
+        # 重なり解消
+        positions = LayoutEngine._resolve_overlaps(positions, node_map, 30)
+
+        # 座標を正規化（左上をmarginに）
+        min_x = min(pos[0] - node_map[nid].width / 2 for nid, pos in positions.items())
+        min_y = min(pos[1] - node_map[nid].height / 2 for nid, pos in positions.items())
 
         max_width = 0
         max_height = 0
 
         for node in nodes:
-            node_right = node.x + node.width
-            node_bottom = node.y + node.height
-            max_width = max(max_width, node_right)
-            max_height = max(max_height, node_bottom)
+            cx, cy = positions[node.node_id]
+            node.x = int(cx - node.width / 2 - min_x + margin)
+            node.y = int(cy - node.height / 2 - min_y + margin)
 
-        new_width = max_width + margin
-        new_height = max_height + margin
-        return new_width, new_height
+            max_width = max(max_width, node.x + node.width)
+            max_height = max(max_height, node.y + node.height)
+
+        return max_width + margin, max_height + margin
+
+    @staticmethod
+    def _initial_placement(
+        nodes: List[LayoutNode],
+        neighbors: Dict[str, Set[str]],
+        degree: Dict[str, int],
+        ideal_length: float,
+        margin: int
+    ) -> Dict[str, List[float]]:
+        """接続構造に基づく初期配置"""
+        n = len(nodes)
+        positions: Dict[str, List[float]] = {}
+
+        # 次数でソート（多いものから配置）
+        sorted_nodes = sorted(nodes, key=lambda x: -degree.get(x.node_id, 0))
+
+        # 最初のノード（最も接続の多いノード）を中心に
+        center = ideal_length * math.sqrt(n) / 2 + margin
+
+        placed: Set[str] = set()
+        for i, node in enumerate(sorted_nodes):
+            if i == 0:
+                # 中心に配置
+                positions[node.node_id] = [center, center]
+                placed.add(node.node_id)
+            else:
+                # 既に配置された隣接ノードの近くに配置
+                neighbor_positions = [
+                    positions[nid] for nid in neighbors[node.node_id]
+                    if nid in placed
+                ]
+
+                if neighbor_positions:
+                    # 隣接ノードの重心を計算
+                    avg_x = sum(p[0] for p in neighbor_positions) / len(neighbor_positions)
+                    avg_y = sum(p[1] for p in neighbor_positions) / len(neighbor_positions)
+
+                    # 重心から少しずらした位置に配置
+                    angle = 2 * math.pi * i / n
+                    positions[node.node_id] = [
+                        avg_x + ideal_length * 0.8 * math.cos(angle),
+                        avg_y + ideal_length * 0.8 * math.sin(angle)
+                    ]
+                else:
+                    # 隣接ノードが未配置なら、中心の周りに配置
+                    angle = 2 * math.pi * i / n
+                    radius = ideal_length * (1 + i / n)
+                    positions[node.node_id] = [
+                        center + radius * math.cos(angle),
+                        center + radius * math.sin(angle)
+                    ]
+                placed.add(node.node_id)
+
+        return positions
+
+    @staticmethod
+    def _force_directed_simulation(
+        positions: Dict[str, List[float]],
+        node_map: Dict[str, LayoutNode],
+        edges: List[LayoutEdge],
+        neighbors: Dict[str, Set[str]],
+        ideal_length: float,
+        iterations: int
+    ) -> Dict[str, List[float]]:
+        """Force-directedシミュレーション"""
+        positions = {k: list(v) for k, v in positions.items()}
+        n = len(positions)
+
+        if n <= 1:
+            return positions
+
+        # パラメータ
+        k = ideal_length  # 理想距離
+        temperature = k * 2  # 初期温度
+        min_temp = 1.0
+
+        for _ in range(iterations):
+            forces: Dict[str, List[float]] = {nid: [0.0, 0.0] for nid in positions}
+
+            # 斥力（全ノード間）
+            node_ids = list(positions.keys())
+            for i, nid1 in enumerate(node_ids):
+                for nid2 in node_ids[i + 1:]:
+                    dx = positions[nid1][0] - positions[nid2][0]
+                    dy = positions[nid1][1] - positions[nid2][1]
+                    dist_sq = dx * dx + dy * dy
+                    dist = math.sqrt(dist_sq) if dist_sq > 0 else 0.1
+
+                    # 斥力: k^2 / dist（遠いノードには弱い斥力）
+                    repulsion = (k * k) / dist * 0.5
+
+                    fx = (dx / dist) * repulsion
+                    fy = (dy / dist) * repulsion
+
+                    forces[nid1][0] += fx
+                    forces[nid1][1] += fy
+                    forces[nid2][0] -= fx
+                    forces[nid2][1] -= fy
+
+            # 引力（接続ノード間）- より強い引力
+            for edge in edges:
+                nid1, nid2 = edge.from_node_id, edge.to_node_id
+                if nid1 not in positions or nid2 not in positions:
+                    continue
+
+                dx = positions[nid2][0] - positions[nid1][0]
+                dy = positions[nid2][1] - positions[nid1][1]
+                dist = math.sqrt(dx * dx + dy * dy)
+
+                if dist < 0.1:
+                    continue
+
+                # 引力: dist^2 / k（強い引力で接続ノードを近づける）
+                attraction = (dist * dist) / k * 1.5
+
+                fx = (dx / dist) * attraction
+                fy = (dy / dist) * attraction
+
+                forces[nid1][0] += fx
+                forces[nid1][1] += fy
+                forces[nid2][0] -= fx
+                forces[nid2][1] -= fy
+
+            # 位置更新
+            for nid in positions:
+                fx, fy = forces[nid]
+                force_mag = math.sqrt(fx * fx + fy * fy)
+                if force_mag > 0.1:
+                    # 温度で移動量を制限
+                    scale = min(force_mag, temperature) / force_mag
+                    positions[nid][0] += fx * scale
+                    positions[nid][1] += fy * scale
+
+            # 冷却
+            temperature = max(temperature * 0.95, min_temp)
+
+        return positions
+
+    @staticmethod
+    def _resolve_overlaps(
+        positions: Dict[str, List[float]],
+        node_map: Dict[str, LayoutNode],
+        min_gap: int,
+        iterations: int = 100
+    ) -> Dict[str, List[float]]:
+        """ノードの重なりを解消"""
+        positions = {k: list(v) for k, v in positions.items()}
+
+        for _ in range(iterations):
+            moved = False
+            node_ids = list(positions.keys())
+
+            for i, nid1 in enumerate(node_ids):
+                for nid2 in node_ids[i + 1:]:
+                    n1 = node_map[nid1]
+                    n2 = node_map[nid2]
+
+                    x1, y1 = positions[nid1]
+                    x2, y2 = positions[nid2]
+
+                    # 必要な最小距離
+                    min_dx = (n1.width + n2.width) / 2 + min_gap
+                    min_dy = (n1.height + n2.height) / 2 + min_gap
+
+                    dx = abs(x2 - x1)
+                    dy = abs(y2 - y1)
+
+                    # 重なり判定（矩形の重なり）
+                    if dx < min_dx and dy < min_dy:
+                        moved = True
+                        overlap_x = min_dx - dx
+                        overlap_y = min_dy - dy
+
+                        # 最小の移動で解消
+                        if overlap_x < overlap_y:
+                            push = overlap_x / 2 + 1
+                            if x1 < x2:
+                                positions[nid1][0] -= push
+                                positions[nid2][0] += push
+                            else:
+                                positions[nid1][0] += push
+                                positions[nid2][0] -= push
+                        else:
+                            push = overlap_y / 2 + 1
+                            if y1 < y2:
+                                positions[nid1][1] -= push
+                                positions[nid2][1] += push
+                            else:
+                                positions[nid1][1] += push
+                                positions[nid2][1] -= push
+
+            if not moved:
+                break
+
+        return positions
+
+    @staticmethod
+    def adjust_canvas_size(
+        nodes: List[LayoutNode],
+        margin: int = 50
+    ) -> Tuple[int, int]:
+        """現在のレイアウトに基づいてキャンバスサイズを計算"""
+        if not nodes:
+            return 800, 600
+
+        max_width = 0
+        max_height = 0
+
+        for node in nodes:
+            max_width = max(max_width, node.x + node.width)
+            max_height = max(max_height, node.y + node.height)
+
+        return max_width + margin, max_height + margin

@@ -70,6 +70,59 @@ PYTHONPATH=packages:$PYTHONPATH python3 examples/drawio_example.py
 
 ---
 
+### complex_ecommerce.py (複雑なパターン)
+本格的なECサイトのデータベース構造。15テーブル・20リレーションの複雑なER図を作成します。
+
+**実行方法:**
+```bash
+cd /kira/in4viz.feature-reset
+PYTHONPATH=packages:$PYTHONPATH python3 examples/complex_ecommerce.py
+```
+
+**出力:**
+- `examples/ecommerce_system.svg` - ECサイトER図（SVG）
+- `examples/ecommerce_system.drawio` - ECサイトER図（draw.io）
+
+**内容:**
+- ユーザー・住所管理
+- 商品・カテゴリ・ブランド・バリエーション
+- 注文・注文明細・決済・配送
+- レビュー・お気に入り・カート・クーポン
+
+**特徴:**
+- 15テーブル、20リレーションシップの大規模構造
+- 自己参照（カテゴリの階層構造）
+- Force-directedレイアウトによる自動配置
+
+---
+
+### complex_social_media.py (複雑なパターン)
+ソーシャルメディアプラットフォームのデータベース構造。12テーブル・16リレーションの複雑なER図を作成します。
+
+**実行方法:**
+```bash
+cd /kira/in4viz.feature-reset
+PYTHONPATH=packages:$PYTHONPATH python3 examples/complex_social_media.py
+```
+
+**出力:**
+- `examples/social_media_system.svg` - SNS ER図（SVG）
+- `examples/social_media_system.drawio` - SNS ER図（draw.io）
+
+**内容:**
+- ユーザー・フォロー関係
+- 投稿・メディア・リプライ・リポスト
+- いいね・ブックマーク・ハッシュタグ
+- ダイレクトメッセージ・通知
+
+**特徴:**
+- 12テーブル、16リレーションシップ
+- 自己参照（投稿のリプライ・リポスト）
+- 多対多の関係（投稿-ハッシュタグ）
+- ユーザー間の複雑な関係性
+
+---
+
 ## 実行前の準備
 
 すべてのサンプルは、PYTHONPATHに`packages`ディレクトリを追加して実行します：
