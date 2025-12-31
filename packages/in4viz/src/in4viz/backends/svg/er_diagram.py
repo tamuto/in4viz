@@ -51,7 +51,9 @@ class SVGERDiagram:
         data = {
             'table_name': table.name,
             'logical_name': table.logical_name,
-            'columns': columns_data
+            'columns': columns_data,
+            'bgcolor': table.bgcolor,
+            'use_gradient': table.use_gradient
         }
 
         # 幅を事前計算

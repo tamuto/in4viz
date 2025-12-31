@@ -87,6 +87,8 @@ class TableStencil(Stencil):
         physical_name = data.get('table_name', 'Table')
         logical_name = data.get('logical_name', physical_name)
         columns = data.get('columns', [])
+        bgcolor = data.get('bgcolor', '#ffffff')
+        use_gradient = data.get('use_gradient', False)
 
         pk_columns = [col for col in columns if col.get('primary_key', False)]
         regular_columns = [col for col in columns if not col.get('primary_key', False)]
@@ -102,12 +104,24 @@ class TableStencil(Stencil):
 
         svg_parts = []
 
+        # グラデーション定義を追加（必要な場合）
+        gradient_id = f'gradient_{id(data)}'
+        if use_gradient:
+            svg_parts.append(f'<defs>')
+            svg_parts.append(f'  <linearGradient id="{gradient_id}" x1="0%" y1="0%" x2="100%" y2="0%">')
+            svg_parts.append(f'    <stop offset="0%" style="stop-color:{bgcolor};stop-opacity:1" />')
+            svg_parts.append(f'    <stop offset="100%" style="stop-color:#ffffff;stop-opacity:1" />')
+            svg_parts.append(f'  </linearGradient>')
+            svg_parts.append(f'</defs>')
+
+        # テーブル全体の背景
+        fill_value = f'url(#{gradient_id})' if use_gradient else bgcolor
         svg_parts.append(f'<rect x="{x}" y="{y}" width="{self.width}" height="{actual_height}" '
-                        f'fill="white" stroke="black" stroke-width="2"/>')
+                        f'fill="{fill_value}" stroke="black" stroke-width="2"/>')
 
         # ヘッダーセクション
         svg_parts.append(f'<rect x="{x}" y="{y}" width="{self.width}" height="{self.header_height}" '
-                        f'fill="#e6f3ff" stroke="black" stroke-width="1"/>')
+                        f'fill="{fill_value}" stroke="black" stroke-width="1"/>')
 
         # テーブル名表示
         table_display = f'{logical_name} ({physical_name})' if logical_name != physical_name else logical_name

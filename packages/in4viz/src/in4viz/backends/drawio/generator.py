@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 
 
 class DrawioGenerator:
-    """draw.io (mxGraph) XML生成ユーティリティ"""
+    """draw.io (mxGraph) XML生成ユーティリティ - テーブル形式"""
 
     @staticmethod
     def create_mxgraph_model(cells: List[Dict[str, Any]], width: int = 1200, height: int = 800) -> str:
@@ -75,25 +75,104 @@ class DrawioGenerator:
                 cell.set(key, str(value))
 
     @staticmethod
-    def create_table_cell(cell_id: str, value: str, x: int, y: int, width: int, height: int, parent: str = '1') -> Dict[str, Any]:
+    def create_table_rect(cell_id: str, x: int, y: int, width: int, height: int,
+                          bgcolor: str = '#ffffff', use_gradient: bool = False,
+                          parent: str = '1') -> Dict[str, Any]:
         """
-        テーブル用のswimlane mxCellデータを生成
+        テーブル外枠の矩形を生成
 
         Args:
             cell_id: セルID
-            value: テーブル名（表示テキスト）
             x, y: 位置
             width, height: サイズ
+            bgcolor: 背景色
+            use_gradient: グラデーション使用フラグ
             parent: 親セルID
 
         Returns:
             mxCellデータ辞書
         """
+        style = f'rounded=0;whiteSpace=wrap;html=1;fillColor={bgcolor};strokeColor=#000000;strokeWidth=2;'
+        if use_gradient:
+            style += 'gradientColor=#ffffff;gradientDirection=east;'
+
+        return {
+            'id': cell_id,
+            'value': '',
+            'style': style,
+            'vertex': '1',
+            'parent': parent,
+            'geometry': {
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+                'as': 'geometry'
+            }
+        }
+
+    @staticmethod
+    def create_header_rect(cell_id: str, x: int, y: int, width: int, height: int,
+                           bgcolor: str = '#ffffff', use_gradient: bool = False,
+                           parent: str = '1') -> Dict[str, Any]:
+        """
+        ヘッダー背景の矩形を生成
+
+        Args:
+            cell_id: セルID
+            x, y: 位置
+            width, height: サイズ
+            bgcolor: 背景色
+            use_gradient: グラデーション使用フラグ
+            parent: 親セルID
+
+        Returns:
+            mxCellデータ辞書
+        """
+        style = f'rounded=0;whiteSpace=wrap;html=1;fillColor={bgcolor};strokeColor=#000000;strokeWidth=1;'
+        if use_gradient:
+            style += 'gradientColor=#ffffff;gradientDirection=east;'
+
+        return {
+            'id': cell_id,
+            'value': '',
+            'style': style,
+            'vertex': '1',
+            'parent': parent,
+            'geometry': {
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+                'as': 'geometry'
+            }
+        }
+
+    @staticmethod
+    def create_text_cell(cell_id: str, value: str, x: int, y: int, width: int, height: int,
+                         font_size: int = 10, font_weight: str = 'normal',
+                         align: str = 'left', parent: str = '1') -> Dict[str, Any]:
+        """
+        テキストセルを生成
+
+        Args:
+            cell_id: セルID
+            value: 表示テキスト
+            x, y: 位置
+            width, height: サイズ
+            font_size: フォントサイズ
+            font_weight: フォントウェイト (normal/bold)
+            align: テキスト配置 (left/center/right)
+            parent: 親セルID
+
+        Returns:
+            mxCellデータ辞書
+        """
+        font_style = '1' if font_weight == 'bold' else '0'
         style = (
-            'swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;'
-            'startSize=26;fillColor=#e1d5e7;horizontalStack=0;'
-            'resizeParent=1;resizeParentMax=0;resizeLast=0;'
-            'collapsible=0;marginBottom=0;swimlaneFillColor=#ffffff;'
+            f'text;html=1;strokeColor=none;fillColor=none;align={align};'
+            f'verticalAlign=middle;whiteSpace=wrap;rounded=0;'
+            f'fontSize={font_size};fontStyle={font_style};'
         )
 
         return {
@@ -112,42 +191,111 @@ class DrawioGenerator:
         }
 
     @staticmethod
-    def create_column_cell(cell_id: str, value: str, y_offset: int, width: int, parent_id: str, is_last_pk: bool = False) -> Dict[str, Any]:
+    def create_marker_rect(cell_id: str, x: int, y: int, width: int, height: int,
+                           parent: str = '1') -> Dict[str, Any]:
         """
-        カラム用のtext mxCellデータを生成
+        NOT NULLマーカー（黒四角）を生成
 
         Args:
             cell_id: セルID
-            value: カラム情報（表示テキスト）
-            y_offset: 親からのY座標オフセット
-            width: 幅
-            parent_id: 親テーブルのセルID
-            is_last_pk: 最後のPKカラムかどうか（境界線表示用）
+            x, y: 位置
+            width, height: サイズ
+            parent: 親セルID
 
         Returns:
             mxCellデータ辞書
         """
-        base_style = (
-            'text;strokeColor=none;fillColor=none;align=left;'
-            'verticalAlign=top;spacingLeft=4;spacingRight=4;'
-            'overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];'
-            'portConstraint=eastwest;'
-        )
-
-        # 最後のPKカラムには境界線を追加
-        if is_last_pk:
-            base_style += 'strokeColor=#000000;strokeWidth=1;'
+        style = 'rounded=0;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;'
 
         return {
             'id': cell_id,
-            'value': value,
-            'style': base_style,
+            'value': '',
+            'style': style,
             'vertex': '1',
-            'parent': parent_id,
+            'parent': parent,
             'geometry': {
-                'y': y_offset,
+                'x': x,
+                'y': y,
                 'width': width,
-                'height': 26,
+                'height': height,
+                'as': 'geometry'
+            }
+        }
+
+    @staticmethod
+    def create_line(cell_id: str, x1: int, y1: int, x2: int, y2: int,
+                    stroke_width: int = 1, parent: str = '1') -> Dict[str, Any]:
+        """
+        線を生成
+
+        Args:
+            cell_id: セルID
+            x1, y1: 開始位置
+            x2, y2: 終了位置
+            stroke_width: 線の太さ
+            parent: 親セルID
+
+        Returns:
+            mxCellデータ辞書
+        """
+        # 線の長さと位置を計算
+        width = abs(x2 - x1) if x2 != x1 else 1
+        height = abs(y2 - y1) if y2 != y1 else 1
+        x = min(x1, x2)
+        y = min(y1, y2)
+
+        if x2 == x1:
+            # 縦線
+            style = f'endArrow=none;html=1;strokeWidth={stroke_width};'
+        else:
+            # 横線
+            style = f'endArrow=none;html=1;strokeWidth={stroke_width};'
+
+        return {
+            'id': cell_id,
+            'value': '',
+            'style': style,
+            'edge': '1',
+            'parent': parent,
+            'geometry': {
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+                'relative': '1',
+                'as': 'geometry'
+            }
+        }
+
+    @staticmethod
+    def create_horizontal_line(cell_id: str, x: int, y: int, width: int,
+                               stroke_width: int = 1, parent: str = '1') -> Dict[str, Any]:
+        """
+        水平線を生成（shape=lineを使用）
+
+        Args:
+            cell_id: セルID
+            x, y: 開始位置
+            width: 線の長さ
+            stroke_width: 線の太さ
+            parent: 親セルID
+
+        Returns:
+            mxCellデータ辞書
+        """
+        style = f'line;strokeWidth={stroke_width};fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;'
+
+        return {
+            'id': cell_id,
+            'value': '',
+            'style': style,
+            'vertex': '1',
+            'parent': parent,
+            'geometry': {
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': 1,
                 'as': 'geometry'
             }
         }

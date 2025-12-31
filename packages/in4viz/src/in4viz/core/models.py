@@ -31,3 +31,5 @@ class Table:
     name: str
     logical_name: str
     columns: List[Column]
+    bgcolor: str = '#ffffff'
+    use_gradient: bool = False

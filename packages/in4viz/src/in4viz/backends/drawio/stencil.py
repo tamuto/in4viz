@@ -1,16 +1,16 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from ...core.text_metrics import calculate_text_width
 from .generator import DrawioGenerator
 
 
 class DrawioTableStencil:
-    """draw.io用のテーブルステンシル（swimlane形式）"""
+    """draw.io用のテーブルステンシル（テーブル形式 - SVGと同一レイアウト）"""
 
     def __init__(self, width: int = 400, min_height: int = 100):
         self.width = width
         self.min_height = min_height
         self.row_height = 22
-        self.header_height = 26
+        self.header_height = 25
         self.min_logical_width = 40
         self.min_marker_width = 6
         self.min_physical_width = 30
@@ -91,9 +91,9 @@ class DrawioTableStencil:
         widths = self._calculate_widths(data)
         return widths['total_width']
 
-    def render_mxcells(self, data: Dict[str, Any], x: int, y: int, canvas):
+    def render_mxcells(self, data: Dict[str, Any], x: int, y: int, canvas) -> Tuple[List[Dict[str, Any]], str]:
         """
-        draw.io用のmxCellリストを生成
+        draw.io用のmxCellリストを生成（SVGと同一レイアウト）
 
         Args:
             data: テーブルデータ
@@ -107,6 +107,8 @@ class DrawioTableStencil:
         physical_name = data.get('table_name', 'Table')
         logical_name = data.get('logical_name', physical_name)
         columns = data.get('columns', [])
+        bgcolor = data.get('bgcolor', '#ffffff')
+        use_gradient = data.get('use_gradient', False)
 
         # PKカラムと通常カラムを分離
         pk_columns = [col for col in columns if col.get('primary_key', False)]
@@ -121,20 +123,51 @@ class DrawioTableStencil:
         # テーブル名表示（論理名 (物理名) 形式）
         table_display = f'{logical_name} ({physical_name})' if logical_name != physical_name else logical_name
 
-        # 親テーブルセル（swimlane）を作成
-        table_cell_id = canvas.get_next_cell_id()
-        table_cell = DrawioGenerator.create_table_cell(
-            cell_id=table_cell_id,
-            value=table_display,
+        # 1. テーブル外枠の矩形を作成
+        table_rect_id = canvas.get_next_cell_id()
+        table_rect = DrawioGenerator.create_table_rect(
+            cell_id=table_rect_id,
             x=x,
             y=y,
             width=width,
-            height=height
+            height=height,
+            bgcolor=bgcolor,
+            use_gradient=use_gradient
         )
-        cells.append(table_cell)
+        cells.append(table_rect)
 
-        # カラムセルを作成
-        y_offset = self.header_height
+        # 2. ヘッダー背景の矩形を作成
+        header_rect_id = canvas.get_next_cell_id()
+        header_rect = DrawioGenerator.create_header_rect(
+            cell_id=header_rect_id,
+            x=x,
+            y=y,
+            width=width,
+            height=self.header_height,
+            bgcolor=bgcolor,
+            use_gradient=use_gradient
+        )
+        cells.append(header_rect)
+
+        # 3. テーブル名テキストを作成
+        header_text_id = canvas.get_next_cell_id()
+        header_text = DrawioGenerator.create_text_cell(
+            cell_id=header_text_id,
+            value=table_display,
+            x=x + 5,
+            y=y,
+            width=width - 10,
+            height=self.header_height,
+            font_size=12,
+            font_weight='bold',
+            align='left'
+        )
+        cells.append(header_text)
+
+        # 4. カラム行を作成
+        current_y = y + self.header_height
+        pk_end_y = None
+
         for i, column in enumerate(sorted_columns):
             physical_col_name = column.get('name', f'Column{i}')
             logical_col_name = column.get('logical_name', physical_col_name)
@@ -151,43 +184,104 @@ class DrawioTableStencil:
                 constraints.append('IDX')
             constraint_text = ', '.join(constraints) if constraints else ''
 
-            # カラム表示テキスト
-            # NOT NULLマーカー（黒四角）を先頭に追加
-            marker = '■ ' if not is_nullable else ''
-            # フォーマット: ■ 論理名 (物理名) 型 [制約]
-            column_display = f'{marker}{logical_col_name} ({physical_col_name}) {column_type}'
-            if constraint_text:
-                column_display += f' [{constraint_text}]'
+            # セル位置計算（SVGと同じロジック）
+            marker_col_x = x
+            logical_col_x = x + widths['marker_width']
+            physical_col_x = x + widths['marker_width'] + widths['logical_width']
+            type_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width']
+            constraint_col_x = x + widths['marker_width'] + widths['logical_width'] + widths['physical_width'] + widths['type_width']
+
+            # NOT NULLマーカー表示
+            if not is_nullable:
+                marker_id = canvas.get_next_cell_id()
+                marker_x = marker_col_x + 3
+                marker_y = current_y + self.row_height // 2 - 3
+                marker_cell = DrawioGenerator.create_marker_rect(
+                    cell_id=marker_id,
+                    x=marker_x,
+                    y=marker_y,
+                    width=3,
+                    height=6
+                )
+                cells.append(marker_cell)
+
+            # 論理名テキスト
+            logical_text_id = canvas.get_next_cell_id()
+            logical_text = DrawioGenerator.create_text_cell(
+                cell_id=logical_text_id,
+                value=logical_col_name,
+                x=logical_col_x + 5,
+                y=current_y,
+                width=widths['logical_width'] - 5,
+                height=self.row_height,
+                font_size=10,
+                font_weight='normal',
+                align='left'
+            )
+            cells.append(logical_text)
+
+            # 物理名テキスト
+            physical_text_id = canvas.get_next_cell_id()
+            physical_text = DrawioGenerator.create_text_cell(
+                cell_id=physical_text_id,
+                value=physical_col_name,
+                x=physical_col_x + 5,
+                y=current_y,
+                width=widths['physical_width'] - 5,
+                height=self.row_height,
+                font_size=10,
+                font_weight='normal',
+                align='left'
+            )
+            cells.append(physical_text)
+
+            # データ型テキスト
+            type_text_id = canvas.get_next_cell_id()
+            type_text = DrawioGenerator.create_text_cell(
+                cell_id=type_text_id,
+                value=column_type,
+                x=type_col_x + 5,
+                y=current_y,
+                width=widths['type_width'] - 5,
+                height=self.row_height,
+                font_size=9,
+                font_weight='normal',
+                align='left'
+            )
+            cells.append(type_text)
+
+            # 制約テキスト（制約欄がある場合のみ）
+            if widths['constraint_width'] > 0:
+                constraint_text_id = canvas.get_next_cell_id()
+                constraint_cell = DrawioGenerator.create_text_cell(
+                    cell_id=constraint_text_id,
+                    value=constraint_text,
+                    x=constraint_col_x + 5,
+                    y=current_y,
+                    width=widths['constraint_width'] - 5,
+                    height=self.row_height,
+                    font_size=9,
+                    font_weight='normal',
+                    align='left'
+                )
+                cells.append(constraint_cell)
+
+            current_y += self.row_height
+
             if is_primary:
-                column_display += ' [PK]'
+                pk_end_y = current_y
 
-            # 最後のPKカラムかどうか
-            is_last_pk = is_primary and i == len(pk_columns) - 1 and len(regular_columns) > 0
-
-            column_cell_id = canvas.get_next_cell_id()
-            column_cell = DrawioGenerator.create_column_cell(
-                cell_id=column_cell_id,
-                value=column_display,
-                y_offset=y_offset,
-                width=width,
-                parent_id=table_cell_id,
-                is_last_pk=is_last_pk
+        # 5. PK区切り線を作成（PKカラムがある場合）
+        if pk_columns and pk_end_y and regular_columns:
+            pk_line_id = canvas.get_next_cell_id()
+            pk_line = DrawioGenerator.create_horizontal_line(
+                cell_id=pk_line_id,
+                x=x,
+                y=pk_end_y,
+                width=widths['column_total_width'],
+                stroke_width=1
             )
-            cells.append(column_cell)
+            cells.append(pk_line)
 
-            y_offset += self.row_height
-
-        # PKのみのテーブルの場合、空行を追加
-        if len(pk_columns) > 0 and len(regular_columns) == 0:
-            empty_cell_id = canvas.get_next_cell_id()
-            empty_cell = DrawioGenerator.create_column_cell(
-                cell_id=empty_cell_id,
-                value='',
-                y_offset=y_offset,
-                width=width,
-                parent_id=table_cell_id,
-                is_last_pk=False
-            )
-            cells.append(empty_cell)
-
-        return cells, table_cell_id
+        # table_rect_id を返す（エッジ接続用）
+        return cells, table_rect_id
