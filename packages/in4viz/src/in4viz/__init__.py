@@ -8,7 +8,7 @@ from .core.models import Table, Column, LineType, Cardinality
 from .backends.svg import SVGERDiagram
 from .backends.drawio import DrawioERDiagram
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 
 __all__ = [
     'Table',
