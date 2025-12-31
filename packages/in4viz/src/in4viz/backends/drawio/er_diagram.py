@@ -10,9 +10,16 @@ from .generator import DrawioGenerator
 class DrawioERDiagram:
     """draw.io形式でER図を生成するクラス"""
 
-    def __init__(self, default_line_type: LineType = LineType.STRAIGHT):
-        self.canvas = DrawioCanvas(default_line_type)
+    def __init__(
+        self,
+        default_line_type: LineType = LineType.STRAIGHT,
+        min_width: int = 1200,
+        min_height: int = 800
+    ):
+        self.canvas = DrawioCanvas(default_line_type, min_width, min_height)
         self.nodes = self.canvas.nodes
+        self.min_width = min_width
+        self.min_height = min_height
 
     def add_table(self, table: Table, x: int = None, y: int = None) -> str:
         """
@@ -124,14 +131,23 @@ class DrawioERDiagram:
             return
 
         # Force-directedレイアウトを実行
-        new_width, new_height = LayoutEngine.layout(self.nodes, self.canvas.edges)
+        new_width, new_height = LayoutEngine.layout(
+            self.nodes,
+            self.canvas.edges,
+            min_width=self.min_width,
+            min_height=self.min_height
+        )
 
         # キャンバスサイズを更新
         self._update_canvas_size(new_width, new_height)
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""
-        new_width, new_height = LayoutEngine.adjust_canvas_size(self.nodes)
+        new_width, new_height = LayoutEngine.adjust_canvas_size(
+            self.nodes,
+            min_width=self.min_width,
+            min_height=self.min_height
+        )
         self._update_canvas_size(new_width, new_height)
 
     def _update_canvas_size(self, width: int, height: int):

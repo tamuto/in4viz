@@ -36,7 +36,9 @@ class LayoutEngine:
         nodes: List[LayoutNode],
         edges: List[LayoutEdge],
         iterations: int = 200,
-        margin: int = 50
+        margin: int = 50,
+        min_width: int = 800,
+        min_height: int = 600
     ) -> Tuple[int, int]:
         """
         Force-directedアルゴリズムでノードを配置
@@ -46,12 +48,14 @@ class LayoutEngine:
             edges: エッジリスト
             iterations: シミュレーション反復回数
             margin: キャンバス端のマージン
+            min_width: キャンバスの最小幅（デフォルト: 800）
+            min_height: キャンバスの最小高さ（デフォルト: 600）
 
         Returns:
             (canvas_width, canvas_height)
         """
         if not nodes:
-            return 800, 600
+            return min_width, min_height
 
         n = len(nodes)
         node_map = {node.node_id: node for node in nodes}
@@ -121,7 +125,11 @@ class LayoutEngine:
             max_width = max(max_width, node.x + node.width)
             max_height = max(max_height, node.y + node.height)
 
-        return max_width + margin, max_height + margin
+        # 計算されたサイズと最低サイズの大きい方を採用
+        calculated_width = max_width + margin
+        calculated_height = max_height + margin
+
+        return max(calculated_width, min_width), max(calculated_height, min_height)
 
     @staticmethod
     def _initial_placement(
@@ -384,11 +392,13 @@ class LayoutEngine:
     @staticmethod
     def adjust_canvas_size(
         nodes: List[LayoutNode],
-        margin: int = 50
+        margin: int = 50,
+        min_width: int = 800,
+        min_height: int = 600
     ) -> Tuple[int, int]:
         """現在のレイアウトに基づいてキャンバスサイズを計算"""
         if not nodes:
-            return 800, 600
+            return min_width, min_height
 
         max_width = 0
         max_height = 0
@@ -397,4 +407,8 @@ class LayoutEngine:
             max_width = max(max_width, node.x + node.width)
             max_height = max(max_height, node.y + node.height)
 
-        return max_width + margin, max_height + margin
+        # 計算されたサイズと最低サイズの大きい方を採用
+        calculated_width = max_width + margin
+        calculated_height = max_height + margin
+
+        return max(calculated_width, min_width), max(calculated_height, min_height)
