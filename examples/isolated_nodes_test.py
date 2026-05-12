@@ -8,16 +8,17 @@ import sys
 from pathlib import Path
 
 # パッケージへのパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent / 'packages'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'packages' / 'in4viz' / 'src'))
 
-from in4viz import ERDiagram, Table, Column, LineType, Cardinality
+from in4viz import Table, Column, LineType, Cardinality
+from in4viz.backends.svg import SVGERDiagram
 
 
 def create_diagram_with_isolated_nodes():
     """孤立ノードを含むER図を作成"""
     print("Creating diagram with isolated nodes...")
 
-    diagram = ERDiagram(backend='svg', default_line_type=LineType.CRANK)
+    diagram = SVGERDiagram(default_line_type=LineType.CRANK)
 
     # === 接続されたテーブル群 ===
     users = Table(
@@ -95,7 +96,7 @@ def create_diagram_with_isolated_nodes():
 
     # SVGファイルとして保存
     output_path = Path(__file__).parent / 'isolated_nodes_test.svg'
-    diagram.save(str(output_path))
+    diagram.save_svg(str(output_path))
     print(f"Saved to: {output_path}")
 
     return output_path

@@ -36,7 +36,10 @@ class LayoutEngine:
         nodes: List[LayoutNode],
         edges: List[LayoutEdge],
         iterations: int = 200,
-        margin: int = 50
+        margin: int = 50,
+        min_width: int = 800,
+        min_height: int = 600,
+        ideal_length_factor: float = 1.6
     ) -> Tuple[int, int]:
         """
         Force-directedアルゴリズムでノードを配置
@@ -46,12 +49,17 @@ class LayoutEngine:
             edges: エッジリスト
             iterations: シミュレーション反復回数
             margin: キャンバス端のマージン
+            min_width: キャンバスの最小幅（デフォルト: 800）
+            min_height: キャンバスの最小高さ（デフォルト: 600）
+            ideal_length_factor: ノード間理想距離の係数。
+                ノードの平均サイズに対する倍率として使用される。
+                値を小さくするとエンティティが詰まり、大きくすると広がる（デフォルト: 1.6）
 
         Returns:
             (canvas_width, canvas_height)
         """
         if not nodes:
-            return 800, 600
+            return min_width, min_height
 
         n = len(nodes)
         node_map = {node.node_id: node for node in nodes}
@@ -75,7 +83,7 @@ class LayoutEngine:
         avg_height = sum(node.height for node in nodes) / n
 
         # 理想的なエッジ長（接続ノード間の距離）
-        ideal_length = max(avg_width, avg_height) * 1.8
+        ideal_length = max(avg_width, avg_height) * ideal_length_factor
 
         # 接続されたノードのみで初期配置とシミュレーション
         if connected_nodes:
@@ -121,7 +129,11 @@ class LayoutEngine:
             max_width = max(max_width, node.x + node.width)
             max_height = max(max_height, node.y + node.height)
 
-        return max_width + margin, max_height + margin
+        # 計算されたサイズと最低サイズの大きい方を採用
+        calculated_width = max_width + margin
+        calculated_height = max_height + margin
+
+        return max(calculated_width, min_width), max(calculated_height, min_height)
 
     @staticmethod
     def _initial_placement(
@@ -384,11 +396,13 @@ class LayoutEngine:
     @staticmethod
     def adjust_canvas_size(
         nodes: List[LayoutNode],
-        margin: int = 50
+        margin: int = 50,
+        min_width: int = 800,
+        min_height: int = 600
     ) -> Tuple[int, int]:
         """現在のレイアウトに基づいてキャンバスサイズを計算"""
         if not nodes:
-            return 800, 600
+            return min_width, min_height
 
         max_width = 0
         max_height = 0
@@ -397,4 +411,8 @@ class LayoutEngine:
             max_width = max(max_width, node.x + node.width)
             max_height = max(max_height, node.y + node.height)
 
-        return max_width + margin, max_height + margin
+        # 計算されたサイズと最低サイズの大きい方を採用
+        calculated_width = max_width + margin
+        calculated_height = max_height + margin
+
+        return max(calculated_width, min_width), max(calculated_height, min_height)

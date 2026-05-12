@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple
 from ...core.models import LineType, Cardinality, Table
 from ...core.layout import LayoutEngine
+from ...core.routing import EdgeRouter
 from .canvas import DrawioCanvas, DrawioNode
 from .stencil import DrawioTableStencil
 from .rendering import DrawioEdge
@@ -10,9 +11,18 @@ from .generator import DrawioGenerator
 class DrawioERDiagram:
     """draw.io形式でER図を生成するクラス"""
 
-    def __init__(self, default_line_type: LineType = LineType.STRAIGHT):
-        self.canvas = DrawioCanvas(default_line_type)
+    def __init__(
+        self,
+        default_line_type: LineType = LineType.STRAIGHT,
+        min_width: int = 1200,
+        min_height: int = 800,
+        ideal_length_factor: float = 1.6
+    ):
+        self.canvas = DrawioCanvas(default_line_type, min_width, min_height)
         self.nodes = self.canvas.nodes
+        self.min_width = min_width
+        self.min_height = min_height
+        self.ideal_length_factor = ideal_length_factor
 
     def add_table(self, table: Table, x: int = None, y: int = None) -> str:
         """
@@ -45,7 +55,9 @@ class DrawioERDiagram:
         data = {
             'table_name': table.name,
             'logical_name': table.logical_name,
-            'columns': columns_data
+            'columns': columns_data,
+            'bgcolor': table.bgcolor,
+            'use_gradient': table.use_gradient
         }
 
         # 幅を事前計算
@@ -124,14 +136,43 @@ class DrawioERDiagram:
             return
 
         # Force-directedレイアウトを実行
-        new_width, new_height = LayoutEngine.layout(self.nodes, self.canvas.edges)
+        new_width, new_height = LayoutEngine.layout(
+            self.nodes,
+            self.canvas.edges,
+            min_width=self.min_width,
+            min_height=self.min_height,
+            ideal_length_factor=self.ideal_length_factor
+        )
+
+        # 直交エッジルーティング: 配置確定後にwaypointsを計算(SVGと同一経路)
+        self._route_edges()
 
         # キャンバスサイズを更新
         self._update_canvas_size(new_width, new_height)
 
+    def _route_edges(self):
+        """ORTHOGONAL指定のエッジにポート位置と waypoints を設定"""
+        orthogonal_edges = [e for e in self.canvas.edges if e.line_type == LineType.ORTHOGONAL]
+        if not orthogonal_edges:
+            return
+        routes = EdgeRouter.route(self.nodes, orthogonal_edges)
+        for edge, route in zip(orthogonal_edges, routes):
+            from_node = self.canvas.get_node(edge.from_node_id)
+            to_node = self.canvas.get_node(edge.to_node_id)
+            if from_node and to_node and from_node.width > 0 and from_node.height > 0:
+                edge.exit_x = (route.from_point[0] - from_node.x) / from_node.width
+                edge.exit_y = (route.from_point[1] - from_node.y) / from_node.height
+                edge.entry_x = (route.to_point[0] - to_node.x) / to_node.width
+                edge.entry_y = (route.to_point[1] - to_node.y) / to_node.height
+            edge.waypoints = route.waypoints
+
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""
-        new_width, new_height = LayoutEngine.adjust_canvas_size(self.nodes)
+        new_width, new_height = LayoutEngine.adjust_canvas_size(
+            self.nodes,
+            min_width=self.min_width,
+            min_height=self.min_height
+        )
         self._update_canvas_size(new_width, new_height)
 
     def _update_canvas_size(self, width: int, height: int):

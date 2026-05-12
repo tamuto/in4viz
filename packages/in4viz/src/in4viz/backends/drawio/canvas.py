@@ -5,9 +5,14 @@ from ...core.models import LineType
 class DrawioCanvas:
     """draw.io用のキャンバス管理クラス"""
 
-    def __init__(self, default_line_type: LineType = LineType.STRAIGHT):
-        self.width = 1200
-        self.height = 800
+    def __init__(
+        self,
+        default_line_type: LineType = LineType.STRAIGHT,
+        width: int = 1200,
+        height: int = 800
+    ):
+        self.width = width
+        self.height = height
         self.default_line_type = default_line_type
         self.nodes: List['DrawioNode'] = []
         self.edges: List = []

@@ -2,16 +2,18 @@
 
 このサンプルを実行するには:
     cd /kira/in4viz.feature-reset
-    PYTHONPATH=packages:$PYTHONPATH python3 examples/basic_usage.py
+    python3 examples/basic_usage.py
 """
 
 import sys
 from pathlib import Path
 
 # パッケージへのパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent / 'packages'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'packages' / 'in4viz' / 'src'))
 
-from in4viz import ERDiagram, Table, Column, LineType, Cardinality
+from in4viz import Table, Column, LineType, Cardinality
+from in4viz.backends.svg import SVGERDiagram
+from in4viz.backends.drawio import DrawioERDiagram
 
 
 def create_example_tables():
@@ -70,7 +72,7 @@ def create_svg_diagram():
     print("Creating SVG diagram...")
 
     # ER図を作成（SVGバックエンド）
-    diagram = ERDiagram(backend='svg', default_line_type=LineType.CRANK)
+    diagram = SVGERDiagram(default_line_type=LineType.CRANK)
 
     # テーブルを作成
     users, posts, categories, post_categories = create_example_tables()
@@ -100,7 +102,7 @@ def create_svg_diagram():
 
     # SVGファイルとして保存
     output_path = Path(__file__).parent / 'basic_usage.svg'
-    diagram.save(str(output_path))
+    diagram.save_svg(str(output_path))
     print(f"SVG diagram saved to: {output_path}")
 
 
@@ -109,7 +111,7 @@ def create_drawio_diagram():
     print("Creating draw.io diagram...")
 
     # ER図を作成（draw.ioバックエンド）
-    diagram = ERDiagram(backend='drawio', default_line_type=LineType.STRAIGHT)
+    diagram = DrawioERDiagram(default_line_type=LineType.STRAIGHT)
 
     # テーブルを作成
     users, posts, categories, post_categories = create_example_tables()
@@ -136,7 +138,7 @@ def create_drawio_diagram():
 
     # draw.ioファイルとして保存
     output_path = Path(__file__).parent / 'basic_usage.drawio'
-    diagram.save(str(output_path))
+    diagram.save_drawio(str(output_path))
     print(f"draw.io diagram saved to: {output_path}")
 
 

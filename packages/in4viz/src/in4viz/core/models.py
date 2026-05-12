@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 class LineType(Enum):
     STRAIGHT = "straight"
-    CRANK = "crank"
+    ORTHOGONAL = "orthogonal"
     SPLINE = "spline"
 
 
@@ -31,3 +31,5 @@ class Table:
     name: str
     logical_name: str
     columns: List[Column]
+    bgcolor: str = '#ffffff'
+    use_gradient: bool = False
