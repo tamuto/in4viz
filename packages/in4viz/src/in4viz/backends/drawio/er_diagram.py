@@ -151,13 +151,20 @@ class DrawioERDiagram:
         self._update_canvas_size(new_width, new_height)
 
     def _route_edges(self):
-        """ORTHOGONAL指定のエッジに waypoints を設定"""
+        """ORTHOGONAL指定のエッジにポート位置と waypoints を設定"""
         orthogonal_edges = [e for e in self.canvas.edges if e.line_type == LineType.ORTHOGONAL]
         if not orthogonal_edges:
             return
         routes = EdgeRouter.route(self.nodes, orthogonal_edges)
-        for edge in orthogonal_edges:
-            edge.waypoints = routes.get((edge.from_node_id, edge.to_node_id), [])
+        for edge, route in zip(orthogonal_edges, routes):
+            from_node = self.canvas.get_node(edge.from_node_id)
+            to_node = self.canvas.get_node(edge.to_node_id)
+            if from_node and to_node and from_node.width > 0 and from_node.height > 0:
+                edge.exit_x = (route.from_point[0] - from_node.x) / from_node.width
+                edge.exit_y = (route.from_point[1] - from_node.y) / from_node.height
+                edge.entry_x = (route.to_point[0] - to_node.x) / to_node.width
+                edge.entry_y = (route.to_point[1] - to_node.y) / to_node.height
+            edge.waypoints = route.waypoints
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from ...core.models import LineType, Cardinality
 
 
@@ -10,6 +10,11 @@ class Edge:
     line_type: LineType = LineType.STRAIGHT
     cardinality: Cardinality = None
     waypoints: List[Tuple[int, int]] = field(default_factory=list)
+    # ルーター由来のポート位置と進入辺(None なら canvas 側で中心-中心交点を計算)
+    from_point: Optional[Tuple[int, int]] = None
+    to_point: Optional[Tuple[int, int]] = None
+    from_side: Optional[str] = None
+    to_side: Optional[str] = None
 
     def __post_init__(self):
         if self.cardinality is None:

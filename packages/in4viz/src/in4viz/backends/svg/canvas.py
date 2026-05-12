@@ -120,7 +120,14 @@ class Canvas:
             to_node = self.get_node(edge.to_node_id)
 
             if from_node and to_node:
-                from_x, from_y, to_x, to_y, from_edge, to_edge = self._get_node_edge_points(from_node, to_node)
+                if edge.from_point is not None and edge.to_point is not None:
+                    # ルーター由来のポートとサイドを優先利用
+                    from_x, from_y = edge.from_point
+                    to_x, to_y = edge.to_point
+                    from_edge = edge.from_side
+                    to_edge = edge.to_side
+                else:
+                    from_x, from_y, to_x, to_y, from_edge, to_edge = self._get_node_edge_points(from_node, to_node)
                 edge_parts.append(edge.render(from_x, from_y, to_x, to_y, edge.line_type, from_edge, to_edge))
 
         return edge_parts

@@ -150,13 +150,17 @@ class SVGERDiagram:
         self._update_canvas_size(new_width, new_height)
 
     def _route_edges(self):
-        """ORTHOGONAL指定のエッジに waypoints を設定"""
+        """ORTHOGONAL指定のエッジにポート/サイド/waypoints を設定"""
         orthogonal_edges = [e for e in self.canvas.edges if e.line_type == LineType.ORTHOGONAL]
         if not orthogonal_edges:
             return
         routes = EdgeRouter.route(self.nodes, orthogonal_edges)
-        for edge in orthogonal_edges:
-            edge.waypoints = routes.get((edge.from_node_id, edge.to_node_id), [])
+        for edge, route in zip(orthogonal_edges, routes):
+            edge.from_point = route.from_point
+            edge.to_point = route.to_point
+            edge.from_side = route.from_side
+            edge.to_side = route.to_side
+            edge.waypoints = route.waypoints
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""
