@@ -68,8 +68,20 @@ class DrawioGenerator:
             if key == 'geometry':
                 # mxGeometry要素を作成
                 geom = ET.SubElement(cell, 'mxGeometry')
+                waypoints = None
                 for g_key, g_value in value.items():
-                    geom.set(g_key, str(g_value))
+                    if g_key == 'points':
+                        # 子要素として <Array as="points"><mxPoint .../></Array> を出力
+                        waypoints = g_value
+                    else:
+                        geom.set(g_key, str(g_value))
+                if waypoints:
+                    arr = ET.SubElement(geom, 'Array')
+                    arr.set('as', 'points')
+                    for px, py in waypoints:
+                        pt = ET.SubElement(arr, 'mxPoint')
+                        pt.set('x', str(int(px)))
+                        pt.set('y', str(int(py)))
             else:
                 # 属性として設定
                 cell.set(key, str(value))
@@ -335,7 +347,8 @@ class DrawioGenerator:
         }
 
     @staticmethod
-    def create_edge_cell(cell_id: str, from_cell_id: str, to_cell_id: str, style: str, parent: str = '1') -> Dict[str, Any]:
+    def create_edge_cell(cell_id: str, from_cell_id: str, to_cell_id: str, style: str,
+                         parent: str = '1', waypoints=None) -> Dict[str, Any]:
         """
         エッジ（関係線）用のmxCellデータを生成
 
@@ -345,10 +358,18 @@ class DrawioGenerator:
             to_cell_id: 終了ノードのセルID
             style: エッジのスタイル文字列
             parent: 親セルID
+            waypoints: 経路中継点のリスト [(x, y), ...]
 
         Returns:
             mxCellデータ辞書
         """
+        geometry: Dict[str, Any] = {
+            'relative': '1',
+            'as': 'geometry'
+        }
+        if waypoints:
+            geometry['points'] = list(waypoints)
+
         return {
             'id': cell_id,
             'value': '',
@@ -357,8 +378,5 @@ class DrawioGenerator:
             'parent': parent,
             'source': from_cell_id,
             'target': to_cell_id,
-            'geometry': {
-                'relative': '1',
-                'as': 'geometry'
-            }
+            'geometry': geometry
         }

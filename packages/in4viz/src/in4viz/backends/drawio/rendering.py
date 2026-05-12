@@ -1,3 +1,4 @@
+from typing import List, Tuple
 from ...core.models import LineType, Cardinality
 
 
@@ -9,6 +10,7 @@ class DrawioEdge:
         self.to_node_id = to_node_id
         self.line_type = line_type
         self.cardinality = cardinality if cardinality is not None else Cardinality()
+        self.waypoints: List[Tuple[int, int]] = []
 
     def _map_cardinality_to_arrow(self, cardinality_str: str) -> str:
         """
@@ -41,11 +43,11 @@ class DrawioEdge:
         style_parts = []
 
         # LineTypeに応じたedgeStyle
-        if self.line_type == LineType.CRANK:
-            style_parts.append("edgeStyle=orthogonalEdgeStyle")
+        # ORTHOGONAL は in4viz 側で計算した waypoints を mxGeometry/Array に渡して
+        # SVG と同じ経路で描画する。drawio ネイティブの orthogonalEdgeStyle は使わない。
+        if self.line_type == LineType.ORTHOGONAL:
+            style_parts.append("edgeStyle=none")
             style_parts.append("rounded=0")
-            style_parts.append("orthogonalLoop=1")
-            style_parts.append("jettySize=auto")
         elif self.line_type == LineType.SPLINE:
             style_parts.append("edgeStyle=elbowEdgeStyle")
             style_parts.append("curved=1")
@@ -86,5 +88,6 @@ class DrawioEdge:
             cell_id=edge_cell_id,
             from_cell_id=from_cell_id,
             to_cell_id=to_cell_id,
-            style=style
+            style=style,
+            waypoints=self.waypoints if self.line_type == LineType.ORTHOGONAL else None
         )

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 class LineType(Enum):
     STRAIGHT = "straight"
-    CRANK = "crank"
+    ORTHOGONAL = "orthogonal"
     SPLINE = "spline"
 
 

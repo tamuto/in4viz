@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple
 from ...core.models import LineType, Cardinality, Table
 from ...core.layout import LayoutEngine
+from ...core.routing import EdgeRouter
 from .canvas import Canvas, Node
 from .stencil import TableStencil
 from .rendering import Edge
@@ -13,12 +14,14 @@ class SVGERDiagram:
         self,
         default_line_type: LineType = LineType.STRAIGHT,
         min_width: int = 800,
-        min_height: int = 600
+        min_height: int = 600,
+        ideal_length_factor: float = 1.6
     ):
         self.canvas = Canvas(min_width, min_height, default_line_type)
         self.nodes = self.canvas.nodes
         self.min_width = min_width
         self.min_height = min_height
+        self.ideal_length_factor = ideal_length_factor
 
     def add_table(self, table: Table, x: int = None, y: int = None) -> str:
         """
@@ -136,11 +139,24 @@ class SVGERDiagram:
             self.nodes,
             self.canvas.edges,
             min_width=self.min_width,
-            min_height=self.min_height
+            min_height=self.min_height,
+            ideal_length_factor=self.ideal_length_factor
         )
+
+        # 直交エッジルーティング: 配置確定後にwaypointsを計算
+        self._route_edges()
 
         # キャンバスサイズを更新
         self._update_canvas_size(new_width, new_height)
+
+    def _route_edges(self):
+        """ORTHOGONAL指定のエッジに waypoints を設定"""
+        orthogonal_edges = [e for e in self.canvas.edges if e.line_type == LineType.ORTHOGONAL]
+        if not orthogonal_edges:
+            return
+        routes = EdgeRouter.route(self.nodes, orthogonal_edges)
+        for edge in orthogonal_edges:
+            edge.waypoints = routes.get((edge.from_node_id, edge.to_node_id), [])
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""

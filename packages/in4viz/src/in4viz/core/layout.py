@@ -38,7 +38,8 @@ class LayoutEngine:
         iterations: int = 200,
         margin: int = 50,
         min_width: int = 800,
-        min_height: int = 600
+        min_height: int = 600,
+        ideal_length_factor: float = 1.6
     ) -> Tuple[int, int]:
         """
         Force-directedアルゴリズムでノードを配置
@@ -50,6 +51,9 @@ class LayoutEngine:
             margin: キャンバス端のマージン
             min_width: キャンバスの最小幅（デフォルト: 800）
             min_height: キャンバスの最小高さ（デフォルト: 600）
+            ideal_length_factor: ノード間理想距離の係数。
+                ノードの平均サイズに対する倍率として使用される。
+                値を小さくするとエンティティが詰まり、大きくすると広がる（デフォルト: 1.6）
 
         Returns:
             (canvas_width, canvas_height)
@@ -79,7 +83,7 @@ class LayoutEngine:
         avg_height = sum(node.height for node in nodes) / n
 
         # 理想的なエッジ長（接続ノード間の距離）
-        ideal_length = max(avg_width, avg_height) * 1.8
+        ideal_length = max(avg_width, avg_height) * ideal_length_factor
 
         # 接続されたノードのみで初期配置とシミュレーション
         if connected_nodes:

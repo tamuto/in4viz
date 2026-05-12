@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Tuple
 from ...core.models import LineType, Cardinality
 
 
@@ -8,6 +9,7 @@ class Edge:
     to_node_id: str
     line_type: LineType = LineType.STRAIGHT
     cardinality: Cardinality = None
+    waypoints: List[Tuple[int, int]] = field(default_factory=list)
 
     def __post_init__(self):
         if self.cardinality is None:
@@ -144,32 +146,11 @@ class Edge:
         if line_type == LineType.STRAIGHT:
             svg_parts.append(f'<line x1="{final_from_x}" y1="{final_from_y}" x2="{final_to_x}" y2="{final_to_y}" stroke="black" stroke-width="1"/>')
 
-        elif line_type == LineType.CRANK:
-            from_perp_x, from_perp_y = get_perpendicular_point(final_from_x, final_from_y, from_edge, 30)
-            to_perp_x, to_perp_y = get_perpendicular_point(final_to_x, final_to_y, to_edge, 30)
-
-            if from_edge in ['top', 'bottom'] and to_edge in ['top', 'bottom']:
-                mid1_x, mid1_y = from_perp_x, from_perp_y
-                mid2_x, mid2_y = final_to_x, from_perp_y
-            elif from_edge in ['left', 'right'] and to_edge in ['left', 'right']:
-                mid1_x, mid1_y = from_perp_x, from_perp_y
-                mid2_x, mid2_y = from_perp_x, final_to_y
-            elif from_edge in ['top', 'bottom'] and to_edge in ['left', 'right']:
-                mid1_x, mid1_y = from_perp_x, from_perp_y
-                mid2_x, mid2_y = to_perp_x, from_perp_y
-            elif from_edge in ['left', 'right'] and to_edge in ['top', 'bottom']:
-                mid1_x, mid1_y = from_perp_x, from_perp_y
-                mid2_x, mid2_y = from_perp_x, to_perp_y
-            else:
-                mid1_x, mid1_y = from_perp_x, from_perp_y
-                mid2_x, mid2_y = to_perp_x, to_perp_y
-
-            if from_edge in ['top', 'bottom'] and to_edge in ['top', 'bottom']:
-                svg_parts.append(f'<path d="M {final_from_x} {final_from_y} L {from_perp_x} {from_perp_y} L {mid2_x} {mid2_y} L {final_to_x} {final_to_y}" stroke="black" stroke-width="1" fill="none"/>')
-            elif from_edge in ['left', 'right'] and to_edge in ['left', 'right']:
-                svg_parts.append(f'<path d="M {final_from_x} {final_from_y} L {from_perp_x} {from_perp_y} L {mid2_x} {mid2_y} L {final_to_x} {final_to_y}" stroke="black" stroke-width="1" fill="none"/>')
-            else:
-                svg_parts.append(f'<path d="M {final_from_x} {final_from_y} L {from_perp_x} {from_perp_y} L {mid1_x} {mid1_y} L {mid2_x} {mid2_y} L {to_perp_x} {to_perp_y} L {final_to_x} {final_to_y}" stroke="black" stroke-width="1" fill="none"/>')
+        elif line_type == LineType.ORTHOGONAL:
+            # waypoints が空のときは直線にフォールバック
+            points = [(final_from_x, final_from_y), *self.waypoints, (final_to_x, final_to_y)]
+            path_d = "M " + " L ".join(f"{int(px)} {int(py)}" for px, py in points)
+            svg_parts.append(f'<path d="{path_d}" stroke="black" stroke-width="1" fill="none"/>')
 
         elif line_type == LineType.SPLINE:
             from_perp_x, from_perp_y = get_perpendicular_point(final_from_x, final_from_y, from_edge, 50)
