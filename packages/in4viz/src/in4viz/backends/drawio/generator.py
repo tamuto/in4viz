@@ -348,7 +348,8 @@ class DrawioGenerator:
 
     @staticmethod
     def create_edge_cell(cell_id: str, from_cell_id: str, to_cell_id: str, style: str,
-                         parent: str = '1', waypoints=None) -> Dict[str, Any]:
+                         parent: str = '1', waypoints=None,
+                         route_status: str = "ok", route_reason: str = "") -> Dict[str, Any]:
         """
         エッジ（関係線）用のmxCellデータを生成
 
@@ -359,6 +360,8 @@ class DrawioGenerator:
             style: エッジのスタイル文字列
             parent: 親セルID
             waypoints: 経路中継点のリスト [(x, y), ...]
+            route_status: ルーティング状態。失敗時のみmxCell属性に出力する。
+            route_reason: ルーティング失敗理由。
 
         Returns:
             mxCellデータ辞書
@@ -370,7 +373,7 @@ class DrawioGenerator:
         if waypoints:
             geometry['points'] = list(waypoints)
 
-        return {
+        edge_cell = {
             'id': cell_id,
             'value': '',
             'style': style,
@@ -380,3 +383,7 @@ class DrawioGenerator:
             'target': to_cell_id,
             'geometry': geometry
         }
+        if route_status != "ok":
+            edge_cell['routeStatus'] = route_status
+            edge_cell['routeReason'] = route_reason
+        return edge_cell
