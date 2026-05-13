@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 
 from in4viz.backends.drawio.generator import DrawioGenerator
+from in4viz.backends.drawio import DrawioERDiagram
+from in4viz.backends.svg import SVGERDiagram
 from in4viz.backends.svg.rendering import Edge
-from in4viz.core.models import LineType
+from in4viz.core.layout import LayoutEngine
+from in4viz.core.models import LineType, Table
 from in4viz.core.routing import EdgeRouter, _find_grid_path, _segments_from_points
 
 
@@ -19,6 +22,10 @@ class RouteTestNode:
 class RouteTestEdge:
     from_node_id: str
     to_node_id: str
+
+
+def _table(name: str) -> Table:
+    return Table(name, name, [])
 
 
 def test_edge_router_routes_around_blocking_node_with_visibility_grid():
@@ -95,3 +102,53 @@ def test_drawio_failed_route_metadata_is_written_to_edge_cell():
     assert cell["routeStatus"] == "failed"
     assert cell["routeReason"] == "no-orthogonal-path"
     assert cell["style"] == "edgeStyle=none;html=1;"
+
+
+def test_svg_diagram_defers_layout_until_render(monkeypatch):
+    calls = 0
+    original_adjust = LayoutEngine.adjust_canvas_size
+
+    def fake_layout(nodes, edges, iterations=200, margin=50, min_width=800,
+                    min_height=600, ideal_length_factor=1.6):
+        nonlocal calls
+        calls += 1
+        return original_adjust(nodes, margin=margin, min_width=min_width, min_height=min_height)
+
+    monkeypatch.setattr(LayoutEngine, "layout", staticmethod(fake_layout))
+
+    diagram = SVGERDiagram(default_line_type=LineType.ORTHOGONAL)
+    for name in ("users", "posts", "comments"):
+        diagram.add_table(_table(name))
+    diagram.add_edge("posts", "users")
+    diagram.add_edge("comments", "posts")
+
+    assert calls == 0
+    diagram.render_svg()
+    assert calls == 1
+    diagram.render_svg()
+    assert calls == 1
+
+
+def test_drawio_diagram_defers_layout_until_render(monkeypatch):
+    calls = 0
+    original_adjust = LayoutEngine.adjust_canvas_size
+
+    def fake_layout(nodes, edges, iterations=200, margin=50, min_width=800,
+                    min_height=600, ideal_length_factor=1.6):
+        nonlocal calls
+        calls += 1
+        return original_adjust(nodes, margin=margin, min_width=min_width, min_height=min_height)
+
+    monkeypatch.setattr(LayoutEngine, "layout", staticmethod(fake_layout))
+
+    diagram = DrawioERDiagram(default_line_type=LineType.ORTHOGONAL)
+    for name in ("users", "posts", "comments"):
+        diagram.add_table(_table(name))
+    diagram.add_edge("posts", "users")
+    diagram.add_edge("comments", "posts")
+
+    assert calls == 0
+    diagram.render_drawio()
+    assert calls == 1
+    diagram.render_drawio()
+    assert calls == 1

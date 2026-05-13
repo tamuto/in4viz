@@ -22,6 +22,8 @@ class SVGERDiagram:
         self.min_width = min_width
         self.min_height = min_height
         self.ideal_length_factor = ideal_length_factor
+        self._layout_dirty = False
+        self._route_dirty = False
 
     def add_table(self, table: Table, x: int = None, y: int = None) -> str:
         """
@@ -82,6 +84,8 @@ class SVGERDiagram:
 
         # キャンバスサイズを調整
         self._adjust_canvas_size_for_current_layout()
+        if self.canvas.edges:
+            self._layout_dirty = True
 
         return table_id
 
@@ -107,10 +111,15 @@ class SVGERDiagram:
 
     def set_node_position(self, node_id: str, x: int, y: int):
         """ノードの位置を設定"""
+        if self._layout_dirty:
+            self._optimize_layout_for_edges()
+            self._layout_dirty = False
+            self._route_dirty = False
         node = self.get_node(node_id)
         if node:
             node.x = x
             node.y = y
+            self._route_dirty = True
 
     def add_edge(self, from_node_id: str, to_node_id: str, line_type: LineType = None, cardinality: Cardinality = None):
         """
@@ -124,8 +133,19 @@ class SVGERDiagram:
         """
         edge = Edge(from_node_id, to_node_id, line_type or self.canvas.default_line_type, cardinality)
         self.canvas.edges.append(edge)
-        # エッジ追加後にレイアウトを最適化
-        self._optimize_layout_for_edges()
+        self._layout_dirty = True
+
+    def _ensure_layout_current(self):
+        """必要な場合だけレイアウトとルーティングを更新する"""
+        if self._layout_dirty:
+            self._optimize_layout_for_edges()
+            self._layout_dirty = False
+            self._route_dirty = False
+            return
+        if self._route_dirty:
+            self._route_edges()
+            self._adjust_canvas_size_for_current_layout()
+            self._route_dirty = False
 
     def _optimize_layout_for_edges(self):
         """Force-directedアルゴリズムでレイアウト最適化"""
@@ -185,6 +205,8 @@ class SVGERDiagram:
         Returns:
             SVG XML文字列
         """
+        self._ensure_layout_current()
+
         node_parts = []
         for node in self.nodes:
             node_parts.append(node.render())
