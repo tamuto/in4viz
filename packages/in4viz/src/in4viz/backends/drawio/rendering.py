@@ -16,6 +16,8 @@ class DrawioEdge:
         self.exit_y: Optional[float] = None
         self.entry_x: Optional[float] = None
         self.entry_y: Optional[float] = None
+        self.route_status: str = "ok"
+        self.route_reason: str = ""
 
     def _map_cardinality_to_arrow(self, cardinality_str: str) -> str:
         """
@@ -105,5 +107,7 @@ class DrawioEdge:
             from_cell_id=from_cell_id,
             to_cell_id=to_cell_id,
             style=style,
-            waypoints=self.waypoints if self.line_type == LineType.ORTHOGONAL else None
+            waypoints=self.waypoints if self.line_type == LineType.ORTHOGONAL else None,
+            route_status=self.route_status,
+            route_reason=self.route_reason
         )

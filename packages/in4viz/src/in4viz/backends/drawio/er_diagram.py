@@ -165,6 +165,8 @@ class DrawioERDiagram:
                 edge.entry_x = (route.to_point[0] - to_node.x) / to_node.width
                 edge.entry_y = (route.to_point[1] - to_node.y) / to_node.height
             edge.waypoints = route.waypoints
+            edge.route_status = route.route_status
+            edge.route_reason = route.route_reason
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""

@@ -15,6 +15,8 @@ class Edge:
     to_point: Optional[Tuple[int, int]] = None
     from_side: Optional[str] = None
     to_side: Optional[str] = None
+    route_status: str = "ok"
+    route_reason: str = ""
 
     def __post_init__(self):
         if self.cardinality is None:
@@ -155,7 +157,13 @@ class Edge:
             # waypoints が空のときは直線にフォールバック
             points = [(final_from_x, final_from_y), *self.waypoints, (final_to_x, final_to_y)]
             path_d = "M " + " L ".join(f"{int(px)} {int(py)}" for px, py in points)
-            svg_parts.append(f'<path d="{path_d}" stroke="black" stroke-width="1" fill="none"/>')
+            route_attrs = ""
+            if self.route_status != "ok":
+                route_attrs = (
+                    f' data-route-status="{self.route_status}"'
+                    f' data-route-reason="{self.route_reason}"'
+                )
+            svg_parts.append(f'<path d="{path_d}" stroke="black" stroke-width="1" fill="none"{route_attrs}/>')
 
         elif line_type == LineType.SPLINE:
             from_perp_x, from_perp_y = get_perpendicular_point(final_from_x, final_from_y, from_edge, 50)

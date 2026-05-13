@@ -7,15 +7,16 @@
     1. 各エッジの両端で box の進入面(top/right/bottom/left)を決定
     2. (node, side) ごとにエッジを集めて辺上に等間隔でポート分配
        (相手側の中心位置でソートし、線同士が交差しにくい順に並べる)
-    3. L字経路(2セグメント)を2パターン試す
-    4. ダメなら Z字経路(3セグメント)を複数オフセットで試す
-    5. すべて失敗すれば waypoints=[] (直線にフォールバック)
+    3. 障害物矩形の外周と既存エッジ周辺レーンから候補座標を作る
+    4. 候補座標グリッド上で A* 探索し、ノード矩形を避ける経路を選ぶ
+    5. 既存エッジとの重なり・交差は soft obstacle としてコストを加算する
 
-外部の障害物との交差判定のみ行い、エッジ同士の交差は許容する。
+既存エッジは通行禁止にはせず、重なりを避けやすくするための追加コストとして扱う。
 """
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Protocol
+import heapq
+from typing import List, Dict, Tuple, Protocol, Optional
 
 
 @dataclass
@@ -26,6 +27,8 @@ class RouteResult:
     from_side: str  # 'top' | 'right' | 'bottom' | 'left'
     to_side: str
     waypoints: List[Tuple[int, int]] = field(default_factory=list)
+    route_status: str = "ok"
+    route_reason: str = ""
 
 
 class RouteNode(Protocol):
@@ -124,67 +127,248 @@ def _path_clear(
     return True
 
 
-def _side_orient(side: str) -> str:
-    """進入辺の向き: 'h' = 水平(left/right) / 'v' = 垂直(top/bottom)"""
-    return 'h' if side in ('left', 'right') else 'v'
+def _outside_point(point: Tuple[int, int], side: str, distance: int) -> Tuple[int, int]:
+    """ポートの接続辺から外側へ少し出た点を返す。"""
+    x, y = point
+    if side == 'left':
+        return x - distance, y
+    if side == 'right':
+        return x + distance, y
+    if side == 'top':
+        return x, y - distance
+    return x, y + distance
 
 
-def _try_l_paths(
-    src_port: Tuple[int, int],
-    dst_port: Tuple[int, int],
-    src_side: str,
-    dst_side: str,
-    obstacles: List[Tuple[int, int, int, int]],
-    padding: int
-) -> List[Tuple[int, int]] | None:
-    """L字経路。両端の向きが直交している場合のみ綺麗に書ける。
+def _point_in_rect(point: Tuple[int, int], rect: Tuple[int, int, int, int], padding: int) -> bool:
+    x, y = point
+    rx, ry, rw, rh = rect
+    return (
+        rx - padding < x < rx + rw + padding
+        and ry - padding < y < ry + rh + padding
+    )
 
-    例: src='right'(水平出口) + dst='top'(垂直入口) → 水平先行L字
-    """
-    sx, sy = src_port
-    dx, dy = dst_port
 
-    if _side_orient(src_side) == 'h':
-        # 水平先行 L: (sx, sy) → (dx, sy) → (dx, dy)
-        path = [(sx, sy), (dx, sy), (dx, dy)]
-    else:
-        # 垂直先行 L: (sx, sy) → (sx, dy) → (dx, dy)
-        path = [(sx, sy), (sx, dy), (dx, dy)]
-
-    if _path_clear(path, obstacles, padding):
-        return path[1:-1]  # 中間点のみ waypoints として返す
+def _segment_direction(
+    x1: int, y1: int, x2: int, y2: int
+) -> Optional[str]:
+    if x1 == x2 and y1 != y2:
+        return 'v'
+    if y1 == y2 and x1 != x2:
+        return 'h'
     return None
 
 
-def _try_z_paths(
-    src_port: Tuple[int, int],
-    dst_port: Tuple[int, int],
-    src_side: str,
-    obstacles: List[Tuple[int, int, int, int]],
-    padding: int
-) -> List[Tuple[int, int]] | None:
-    """Z字経路を複数オフセットで試す。
+def _overlap_length(a1: int, a2: int, b1: int, b2: int) -> int:
+    return max(0, min(max(a1, a2), max(b1, b2)) - max(min(a1, a2), min(b1, b2)))
 
-    両端の向きが同じ(平行)場合に必須。
-    src_side が水平向き(left/right) なら 水平→垂直→水平 の3セグメント、
-    垂直向き(top/bottom) なら 垂直→水平→垂直 の3セグメントを生成する。
-    """
-    sx, sy = src_port
-    dx, dy = dst_port
-    horizontal_first = _side_orient(src_side) == 'h'
 
-    # 中継位置(垂直/水平方向)を sport〜dport の間で複数試す
-    offsets = [0.5, 0.3, 0.7, 0.15, 0.85]
-    for ratio in offsets:
-        if horizontal_first:
-            mid_x = int(sx + (dx - sx) * ratio)
-            path = [(sx, sy), (mid_x, sy), (mid_x, dy), (dx, dy)]
+def _between(value: int, start: int, end: int) -> bool:
+    return min(start, end) < value < max(start, end)
+
+
+def _soft_segment_cost(
+    segment: Tuple[int, int, int, int],
+    existing_segments: List[Tuple[int, int, int, int]]
+) -> float:
+    """既存エッジとの重なり・交差に対する追加コスト。通行禁止にはしない。"""
+    x1, y1, x2, y2 = segment
+    direction = _segment_direction(x1, y1, x2, y2)
+    if direction is None:
+        return 0.0
+
+    cost = 0.0
+    for ex1, ey1, ex2, ey2 in existing_segments:
+        existing_direction = _segment_direction(ex1, ey1, ex2, ey2)
+        if existing_direction is None:
+            continue
+
+        if direction == existing_direction:
+            if direction == 'h' and y1 == ey1:
+                overlap = _overlap_length(x1, x2, ex1, ex2)
+                if overlap:
+                    cost += 400 + overlap * 25
+            elif direction == 'v' and x1 == ex1:
+                overlap = _overlap_length(y1, y2, ey1, ey2)
+                if overlap:
+                    cost += 400 + overlap * 25
+        elif direction == 'h':
+            if _between(ex1, x1, x2) and _between(y1, ey1, ey2):
+                cost += 80
         else:
-            mid_y = int(sy + (dy - sy) * ratio)
-            path = [(sx, sy), (sx, mid_y), (dx, mid_y), (dx, dy)]
-        if _path_clear(path, obstacles, padding):
-            return path[1:-1]
-    return None
+            if _between(x1, ex1, ex2) and _between(ey1, y1, y2):
+                cost += 80
+    return cost
+
+
+def _simplify_path(points: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    if not points:
+        return []
+
+    deduped: List[Tuple[int, int]] = []
+    for point in points:
+        if not deduped or deduped[-1] != point:
+            deduped.append(point)
+
+    simplified: List[Tuple[int, int]] = []
+    for point in deduped:
+        simplified.append(point)
+        while len(simplified) >= 3:
+            a, b, c = simplified[-3], simplified[-2], simplified[-1]
+            if (a[0] == b[0] == c[0]) or (a[1] == b[1] == c[1]):
+                simplified.pop(-2)
+            else:
+                break
+    return simplified
+
+
+def _candidate_coordinates(
+    start: Tuple[int, int],
+    goal: Tuple[int, int],
+    obstacles: List[Tuple[int, int, int, int]],
+    existing_segments: List[Tuple[int, int, int, int]],
+    padding: int
+) -> Tuple[List[int], List[int]]:
+    lane_gap = max(8, padding)
+    clearance = padding + 1
+    xs = {start[0], goal[0]}
+    ys = {start[1], goal[1]}
+
+    if obstacles:
+        min_x = min(rx for rx, _, _, _ in obstacles)
+        max_x = max(rx + rw for rx, _, rw, _ in obstacles)
+        min_y = min(ry for _, ry, _, _ in obstacles)
+        max_y = max(ry + rh for _, ry, _, rh in obstacles)
+    else:
+        min_x = min(start[0], goal[0])
+        max_x = max(start[0], goal[0])
+        min_y = min(start[1], goal[1])
+        max_y = max(start[1], goal[1])
+
+    outer = max(40, padding * 4)
+    xs.update([min(min_x, start[0], goal[0]) - outer, max(max_x, start[0], goal[0]) + outer])
+    ys.update([min(min_y, start[1], goal[1]) - outer, max(max_y, start[1], goal[1]) + outer])
+
+    for rx, ry, rw, rh in obstacles:
+        xs.update([rx - clearance, rx + rw + clearance])
+        ys.update([ry - clearance, ry + rh + clearance])
+
+    for x1, y1, x2, y2 in existing_segments:
+        xs.update([x1, x2])
+        ys.update([y1, y2])
+        if y1 == y2:
+            ys.update([y1 - lane_gap, y1 + lane_gap])
+        if x1 == x2:
+            xs.update([x1 - lane_gap, x1 + lane_gap])
+
+    return sorted(xs), sorted(ys)
+
+
+def _find_grid_path(
+    start: Tuple[int, int],
+    goal: Tuple[int, int],
+    obstacles: List[Tuple[int, int, int, int]],
+    existing_segments: List[Tuple[int, int, int, int]],
+    padding: int
+) -> Optional[List[Tuple[int, int]]]:
+    """障害物外周と既存線周辺の候補座標上で直交A*探索を行う。"""
+    xs, ys = _candidate_coordinates(start, goal, obstacles, existing_segments, padding)
+    blocked = set()
+    points = set()
+    for x in xs:
+        for y in ys:
+            point = (x, y)
+            if point not in (start, goal) and any(_point_in_rect(point, obs, padding) for obs in obstacles):
+                blocked.add(point)
+            else:
+                points.add(point)
+
+    if start not in points or goal not in points:
+        return None
+
+    points_by_x: Dict[int, List[int]] = defaultdict(list)
+    points_by_y: Dict[int, List[int]] = defaultdict(list)
+    for x, y in points:
+        points_by_x[x].append(y)
+        points_by_y[y].append(x)
+    for x in points_by_x:
+        points_by_x[x].sort()
+    for y in points_by_y:
+        points_by_y[y].sort()
+
+    def neighbors(point: Tuple[int, int]) -> List[Tuple[Tuple[int, int], str]]:
+        x, y = point
+        result = []
+        x_row = points_by_y[y]
+        y_col = points_by_x[x]
+        x_index = x_row.index(x)
+        y_index = y_col.index(y)
+        for next_x in (x_row[x_index - 1] if x_index > 0 else None,
+                       x_row[x_index + 1] if x_index + 1 < len(x_row) else None):
+            if next_x is not None:
+                next_point = (next_x, y)
+                if next_point not in blocked and _path_clear([point, next_point], obstacles, padding):
+                    result.append((next_point, 'h'))
+        for next_y in (y_col[y_index - 1] if y_index > 0 else None,
+                       y_col[y_index + 1] if y_index + 1 < len(y_col) else None):
+            if next_y is not None:
+                next_point = (x, next_y)
+                if next_point not in blocked and _path_clear([point, next_point], obstacles, padding):
+                    result.append((next_point, 'v'))
+        return result
+
+    def heuristic(point: Tuple[int, int]) -> int:
+        return abs(point[0] - goal[0]) + abs(point[1] - goal[1])
+
+    start_state = (start, None)
+    counter = 0
+    queue = [(heuristic(start), 0.0, counter, start, None)]
+    best: Dict[Tuple[Tuple[int, int], Optional[str]], float] = {start_state: 0.0}
+    previous: Dict[
+        Tuple[Tuple[int, int], Optional[str]],
+        Tuple[Tuple[int, int], Optional[str]]
+    ] = {}
+    goal_state = None
+
+    while queue:
+        _, current_cost, _, point, prev_dir = heapq.heappop(queue)
+        state = (point, prev_dir)
+        if current_cost != best.get(state):
+            continue
+        if point == goal:
+            goal_state = state
+            break
+
+        for next_point, direction in neighbors(point):
+            x1, y1 = point
+            x2, y2 = next_point
+            segment = (x1, y1, x2, y2)
+            length = abs(x2 - x1) + abs(y2 - y1)
+            bend_cost = 0 if prev_dir in (None, direction) else 30
+            next_cost = (
+                current_cost
+                + length
+                + bend_cost
+                + _soft_segment_cost(segment, existing_segments)
+            )
+            next_state = (next_point, direction)
+            if next_cost < best.get(next_state, float('inf')):
+                best[next_state] = next_cost
+                previous[next_state] = state
+                counter += 1
+                heapq.heappush(queue, (next_cost + heuristic(next_point), next_cost, counter, next_point, direction))
+
+    if goal_state is None:
+        return None
+
+    path = []
+    state = goal_state
+    while True:
+        path.append(state[0])
+        if state == start_state:
+            break
+        state = previous[state]
+    path.reverse()
+    return _simplify_path(path)
 
 
 def _choose_path(
@@ -193,24 +377,21 @@ def _choose_path(
     src_side: str,
     dst_side: str,
     obstacles: List[Tuple[int, int, int, int]],
-    padding: int
-) -> List[Tuple[int, int]]:
-    """進入辺の向きに応じて L 字 / Z 字を選択。失敗時は直線にフォールバック。"""
-    src_orient = _side_orient(src_side)
-    dst_orient = _side_orient(dst_side)
+    padding: int,
+    existing_segments: List[Tuple[int, int, int, int]]
+) -> Optional[List[Tuple[int, int]]]:
+    """障害物外周候補と既存線コストを使って直交経路を探索する。"""
+    offset = padding + 1
+    src_exit = _outside_point(src_port, src_side, offset)
+    dst_entry = _outside_point(dst_port, dst_side, offset)
+    routed = _find_grid_path(src_exit, dst_entry, obstacles, existing_segments, padding)
+    if routed is None:
+        return None
 
-    if src_orient != dst_orient:
-        # 両端の向きが直交: L 字優先
-        path = _try_l_paths(src_port, dst_port, src_side, dst_side, obstacles, padding)
-        if path is not None:
-            return path
-        # L が障害物にぶつかれば Z にフォールバック
-        path = _try_z_paths(src_port, dst_port, src_side, obstacles, padding)
-        return path if path is not None else []
-    else:
-        # 両端の向きが同じ(平行): L だと必ず斜めセグメントが残るので Z 字必須
-        path = _try_z_paths(src_port, dst_port, src_side, obstacles, padding)
-        return path if path is not None else []
+    path = _simplify_path([src_port, src_exit, *routed, dst_entry, dst_port])
+    if not _path_clear(path, obstacles, padding):
+        return None
+    return path[1:-1]
 
 
 class EdgeRouter:
@@ -280,13 +461,16 @@ class EdgeRouter:
                 port_assignment[(edge_idx, role)] = _port_at(rect, side, ratio)
 
         # Pass 3: 各エッジについて分配済みポートで経路探索(edges と同じ順序で返す)
+        used_segments: List[Tuple[int, int, int, int]] = []
         result: List[RouteResult] = []
         for idx, info in enumerate(edge_info):
             if info is None:
                 # 不正なエッジ: ダミーの結果を返す(呼び出し側で扱う)
                 result.append(RouteResult(
                     from_point=(0, 0), to_point=(0, 0),
-                    from_side='right', to_side='left', waypoints=[]
+                    from_side='right', to_side='left', waypoints=[],
+                    route_status="failed",
+                    route_reason="missing-node"
                 ))
                 continue
 
@@ -301,14 +485,22 @@ class EdgeRouter:
             waypoints = _choose_path(
                 src_port, dst_port,
                 info['src_side'], info['dst_side'],
-                obstacles, padding
+                obstacles, padding, used_segments
             )
+            route_status = "ok" if waypoints is not None else "failed"
+            route_reason = "" if waypoints is not None else "no-orthogonal-path"
+            if waypoints is None:
+                waypoints = []
+            else:
+                used_segments.extend(_segments_from_points([src_port, *waypoints, dst_port]))
 
             result.append(RouteResult(
                 from_point=src_port,
                 to_point=dst_port,
                 from_side=info['src_side'],
                 to_side=info['dst_side'],
-                waypoints=waypoints
+                waypoints=waypoints,
+                route_status=route_status,
+                route_reason=route_reason
             ))
         return result

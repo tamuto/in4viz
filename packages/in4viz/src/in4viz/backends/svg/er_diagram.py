@@ -161,6 +161,8 @@ class SVGERDiagram:
             edge.from_side = route.from_side
             edge.to_side = route.to_side
             edge.waypoints = route.waypoints
+            edge.route_status = route.route_status
+            edge.route_reason = route.route_reason
 
     def _adjust_canvas_size_for_current_layout(self):
         """現在のレイアウトに基づいてキャンバスサイズを調整"""
