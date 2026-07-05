@@ -10,6 +10,9 @@
     3. 障害物矩形の外周と既存エッジ周辺レーンから候補座標を作る
     4. 候補座標グリッド上で A* 探索し、ノード矩形を避ける経路を選ぶ
     5. 既存エッジとの重なり・交差は soft obstacle としてコストを加算する
+    6. ポート間距離が短いエッジから順に経路を確定する
+    7. 全エッジ確定後、他の全エッジを既存線として各エッジを引き直し、
+       コストが下がる場合のみ新しい経路を採用する(リファインメント)
 
 既存エッジは通行禁止にはせず、重なりを避けやすくするための追加コストとして扱う。
 """
@@ -394,6 +397,29 @@ def _choose_path(
     return path[1:-1]
 
 
+def _manhattan(a: Tuple[int, int], b: Tuple[int, int]) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def _path_cost(
+    points: List[Tuple[int, int]],
+    existing_segments: List[Tuple[int, int, int, int]]
+) -> float:
+    """経路の総コスト。A* と同じ指標(長さ + 曲がり + 既存線ペナルティ)で評価する。"""
+    cost = 0.0
+    prev_dir: Optional[str] = None
+    for segment in _segments_from_points(points):
+        x1, y1, x2, y2 = segment
+        direction = _segment_direction(x1, y1, x2, y2)
+        cost += abs(x2 - x1) + abs(y2 - y1)
+        if prev_dir is not None and direction is not None and direction != prev_dir:
+            cost += 30
+        if direction is not None:
+            prev_dir = direction
+        cost += _soft_segment_cost(segment, existing_segments)
+    return cost
+
+
 class EdgeRouter:
     """エッジ経路計算"""
 
@@ -460,8 +486,68 @@ class EdgeRouter:
                 ratio = (i + 1) / (n + 1)
                 port_assignment[(edge_idx, role)] = _port_at(rect, side, ratio)
 
-        # Pass 3: 各エッジについて分配済みポートで経路探索(edges と同じ順序で返す)
-        used_segments: List[Tuple[int, int, int, int]] = []
+        # Pass 3: ポート間距離が短いエッジから順に経路探索する。
+        # 交差ペナルティは先に引かれた線に対してしか働かないため、
+        # 引く順序が交差数に影響する。短い線を先に確定すると、
+        # 後から引く長い線が迂回して交差を避けやすい。
+        routable = [idx for idx, info in enumerate(edge_info) if info is not None]
+        route_order = sorted(
+            routable,
+            key=lambda idx: (
+                _manhattan(port_assignment[(idx, 'src')], port_assignment[(idx, 'dst')]),
+                idx,
+            )
+        )
+
+        obstacles_map: Dict[int, List[Tuple[int, int, int, int]]] = {}
+        for idx in routable:
+            info = edge_info[idx]
+            obstacles_map[idx] = [
+                r for nid, r in rect_map.items()
+                if nid != info['src_id'] and nid != info['dst_id']
+            ]
+
+        paths: Dict[int, Optional[List[Tuple[int, int]]]] = {}
+        segments_map: Dict[int, List[Tuple[int, int, int, int]]] = {}
+        for idx in route_order:
+            info = edge_info[idx]
+            src_port = port_assignment[(idx, 'src')]
+            dst_port = port_assignment[(idx, 'dst')]
+            existing = [seg for segs in segments_map.values() for seg in segs]
+            waypoints = _choose_path(
+                src_port, dst_port,
+                info['src_side'], info['dst_side'],
+                obstacles_map[idx], padding, existing
+            )
+            paths[idx] = waypoints
+            if waypoints is not None:
+                segments_map[idx] = _segments_from_points([src_port, *waypoints, dst_port])
+
+        # Pass 4: リファインメント。Pass 3 では先行エッジしか考慮できないため、
+        # 全エッジ確定後に「他の全エッジ」を既存線として各エッジを引き直し、
+        # コストが下がる場合のみ採用する(無条件採用は悪化し得る)。
+        for idx in route_order:
+            info = edge_info[idx]
+            src_port = port_assignment[(idx, 'src')]
+            dst_port = port_assignment[(idx, 'dst')]
+            others = [seg for j, segs in segments_map.items() if j != idx for seg in segs]
+            rerouted = _choose_path(
+                src_port, dst_port,
+                info['src_side'], info['dst_side'],
+                obstacles_map[idx], padding, others
+            )
+            if rerouted is None:
+                continue
+            current = paths[idx]
+            if current is not None:
+                new_cost = _path_cost([src_port, *rerouted, dst_port], others)
+                old_cost = _path_cost([src_port, *current, dst_port], others)
+                if new_cost >= old_cost:
+                    continue
+            paths[idx] = rerouted
+            segments_map[idx] = _segments_from_points([src_port, *rerouted, dst_port])
+
+        # 結果を edges と同じ順序で組み立てる
         result: List[RouteResult] = []
         for idx, info in enumerate(edge_info):
             if info is None:
@@ -474,33 +560,14 @@ class EdgeRouter:
                 ))
                 continue
 
-            src_port = port_assignment[(idx, 'src')]
-            dst_port = port_assignment[(idx, 'dst')]
-
-            obstacles = [
-                r for nid, r in rect_map.items()
-                if nid != info['src_id'] and nid != info['dst_id']
-            ]
-
-            waypoints = _choose_path(
-                src_port, dst_port,
-                info['src_side'], info['dst_side'],
-                obstacles, padding, used_segments
-            )
-            route_status = "ok" if waypoints is not None else "failed"
-            route_reason = "" if waypoints is not None else "no-orthogonal-path"
-            if waypoints is None:
-                waypoints = []
-            else:
-                used_segments.extend(_segments_from_points([src_port, *waypoints, dst_port]))
-
+            waypoints = paths[idx]
             result.append(RouteResult(
-                from_point=src_port,
-                to_point=dst_port,
+                from_point=port_assignment[(idx, 'src')],
+                to_point=port_assignment[(idx, 'dst')],
                 from_side=info['src_side'],
                 to_side=info['dst_side'],
-                waypoints=waypoints,
-                route_status=route_status,
-                route_reason=route_reason
+                waypoints=waypoints if waypoints is not None else [],
+                route_status="ok" if waypoints is not None else "failed",
+                route_reason="" if waypoints is not None else "no-orthogonal-path"
             ))
         return result
